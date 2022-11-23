@@ -35,7 +35,7 @@ double optimal_direction_i,  optimal_direction_j, optimal_vector_norm, vector_no
 int radius, Ntot, Nwt, iter, x, y, cell_x, cell_y, dir, queue, ind, length, coordX, coordY, previous_link_direction, chain_length;
 int arising_time, x_b, y_b, direction, chosen_direction, min_length, num_mins, chosen_min, doubled_ecDNA_copyNumber, daughter_ecDNA_copyNumber1, daughter_ecDNA_copyNumber2;
 int empty_cell_x, empty_cell_y, search_radius, num_nearest_empty_cells, rand_int, vertical_direction, horizontal_direction, i_lowerBound, j_lowerBound, i_upperBound, j_upperBound;
-int next_move_direction_x, next_move_direction_y;
+int next_move_direction_x, next_move_direction_y, motherCell_copyNumber, clusterSize, initial_copyNumber;
 
 
 
@@ -55,6 +55,7 @@ bool BIRTH = false;
 bool DEATH = false;
 bool quiet = true;
 bool skip = false;
+bool clustering = false;
 
 
 
@@ -64,6 +65,9 @@ bool skip = false;
 
 // Define poisson distributions
 default_random_engine generator;
+
+// Declare Poisson distribution
+poisson_distribution<int> ecDNA_clusterSizeDistribution(2.0);
 
 
 
@@ -543,19 +547,65 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 
 
 
+	if (clustering == false)	// No ecDNA clustering
+	{	
+		// Distribute ecDNA between two daughter cells according to binomial
+		binomial_distribution<int> draw_new_ecDNA_copyNumber(doubled_ecDNA_copyNumber , 0.5);
+		daughter_ecDNA_copyNumber1 = draw_new_ecDNA_copyNumber(generator);
+		daughter_ecDNA_copyNumber2 = doubled_ecDNA_copyNumber - daughter_ecDNA_copyNumber1;
+		//cout << "Daugher cells receive " << daughter_ecDNA_copyNumber1 << " and " << daughter_ecDNA_copyNumber2 << " ecDNA\n" << endl;
 
-	// Distribute ecDNA between two daughter cells according to binomial
-	binomial_distribution<int> draw_new_ecDNA_copyNumber(doubled_ecDNA_copyNumber , 0.5);
-	daughter_ecDNA_copyNumber1 = draw_new_ecDNA_copyNumber(generator);
-	daughter_ecDNA_copyNumber2 = doubled_ecDNA_copyNumber - daughter_ecDNA_copyNumber1;
-	//cout << "Daugher cells receive " << daughter_ecDNA_copyNumber1 << " and " << daughter_ecDNA_copyNumber2 << " ecDNA\n" << endl;
 
+		// Create daughter cell
+		tissue[cell_x][cell_y].set_ecDNA(daughter_ecDNA_copyNumber1);
+		tissue[chainX[0]][chainY[0]].set_ecDNA(daughter_ecDNA_copyNumber2);
+	}
+
+
+	else 	// ecDNA cluster with Poisson cluster size distribution
+	{
+  		// Distribute ecDNA in clusters amongst two daughter cells 
+  		motherCell_copyNumber = doubled_ecDNA_copyNumber;
+  		daughter_ecDNA_copyNumber1 = 0;
+  		daughter_ecDNA_copyNumber2 = 0;
+
+  		//cout << "\n\nMother cell (ecDNA = " << motherCell_copyNumber << ") distributes ecDNA hubs across daughter cells" << endl;
+
+  		while(motherCell_copyNumber > 0)
+  		{
+  			// Draw cluster size from Poisson distribution
+  			clusterSize = ecDNA_clusterSizeDistribution(generator);
+  			
+  			// Skip if cluster size is larger than available remaining ecDNA in mother cell
+  			if (clusterSize > motherCell_copyNumber) continue;
+
+  			// Choose which daughter cell to put ecDNA cluster (binomial distribution of ecDNA clusters)
+  			rand_double = drand48();
+
+  			if (rand_double < 0.5)
+  			{
+  				daughter_ecDNA_copyNumber1 += clusterSize;
+  				//cout << "Daughter cell 1 receives ecDNA hub of size " << clusterSize << endl;
+  				//continue;
+  			}
+
+  			// If not chosen to be placed into daughter cell 1, it goes in daughter cell 2
+  			else 
+  			{
+  				daughter_ecDNA_copyNumber2 += clusterSize;
+  				//cout << "Daughter cell 2 receives ecDNA hub of size " << clusterSize << endl;
+  			}
+
+  			motherCell_copyNumber -= clusterSize;
+  			//cout << "Mother cell ecDNA copy number = " << motherCell_copyNumber << endl; 
+  		}
+
+  		//cout << "Finished distributing ecDNA hubs. Daughter cell 1 has " << daughter_ecDNA_copyNumber1 << " ecDNA, and daughter cell 2 has " << daughter_ecDNA_copyNumber2 << endl;
 	
-
-
-	// Create daughter cell
-	tissue[cell_x][cell_y].set_ecDNA(daughter_ecDNA_copyNumber1);
-	tissue[chainX[0]][chainY[0]].set_ecDNA(daughter_ecDNA_copyNumber2);
+  		// Create daughter cell
+		tissue[cell_x][cell_y].set_ecDNA(daughter_ecDNA_copyNumber1);
+		tissue[chainX[0]][chainY[0]].set_ecDNA(daughter_ecDNA_copyNumber2);
+	}
 
 
 
@@ -619,7 +669,7 @@ int main(int argc, char** argv)
 	//================== Parse command line arguments ====================//
 	int c;
 
-	while ((c = getopt (argc, argv, ":v:x:q:")) != -1)
+	while ((c = getopt (argc, argv, "vCx:q:n:")) != -1)
 	switch (c)
 	{
 		// Verbose flag
@@ -632,10 +682,19 @@ int main(int argc, char** argv)
 			seed = atoi(optarg);		
 			break;
 
-
 		// Set pushing limit for division algorithm
 		case 'q':
 			q = atoi(optarg);		
+			break;
+
+		// Clustering parameter (C=0 for no ecDNA clustering, C=1 for clustering)
+		case 'C':
+			clustering = true;
+			break;
+
+		// ecDNA copy number in initial cell
+		case 'n':
+			initial_copyNumber = atoi(optarg);
 			break;
 
 		case '?':
@@ -656,7 +715,17 @@ int main(int argc, char** argv)
 
 
 
+	// Checks on input parameter values
+	if (q < 0)
+	{
+		cout << "Pushing parameter q must be greater than 0. Exiting." << endl;
+		exit(0);
+	}
 
+
+
+	//if (clustering == true) cout << "Clustering" << endl;
+	//else cout << "no clustering" << endl;
 
 
 
@@ -678,6 +747,7 @@ int main(int argc, char** argv)
 
 
 
+
 	//================== Initialise tissue ====================//
 
 	// Estimate radius of final system based on _maxsize
@@ -685,7 +755,7 @@ int main(int argc, char** argv)
 
 
 	// Slightly over-estimate this to avoid segmentation errors
-	radius = (int)(3*radius_double);
+	radius = (int)(1.5*radius_double);
 
 
 	if (!quiet) cout << " " << endl;
@@ -714,7 +784,7 @@ int main(int argc, char** argv)
 
 
 	// Seed first tissue cell at (x,y) = (radius , radius)
-	tissue[radius][radius].set_ecDNA(20);
+	tissue[radius][radius].set_ecDNA(initial_copyNumber);
 
 
 	Ntot += 1;
@@ -876,26 +946,22 @@ int main(int argc, char** argv)
 
 
 
-
-
-
-
 	//================== Open data files & write final system data ==================//
 
 	stringstream f;
 	f.str("");
-	f << "./2D_DATA/Nmax=" << _maxsize << "_q=" << q << "/seed=" << seed;
+	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_clustering=" << boolalpha << clustering << "/seed=" << seed;
 	DIR *dir = opendir(f.str().c_str());
 	if(!dir)
 	{
 		f.str("");
-		f << "mkdir -p ./2D_DATA/Nmax=" << _maxsize << "_q=" << q << "/seed=" << seed;
+		f << "mkdir -p ./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_clustering=" << boolalpha << clustering << "/seed=" << seed;
 		system(f.str().c_str());
 	}
 
 	ofstream tissue_file;
 	f.str("");
-	f << "./2D_DATA/Nmax=" << _maxsize << "_q=" << q << "/seed=" << seed << "/tissue.csv";
+	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_clustering=" << boolalpha << clustering << "/seed=" << seed << "/tissue.csv";
 	tissue_file.open(f.str().c_str());
 
 

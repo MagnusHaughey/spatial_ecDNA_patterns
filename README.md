@@ -6,18 +6,20 @@ Execute a simulation by running:
 
 ```
 g++ -o ./spatial_ecDNA_patterns_2D ./spatial_ecDNA_patterns_2D.cpp
-./spatial_ecDNA_patterns_2D [-v1] [-q Q] [-x X]
+./spatial_ecDNA_patterns_2D [-v] [-C] [-q Q] [-n N] [-x X]
 ```
 
 where\
-&nbsp; -v1 &emsp;&emsp; verbose flag (optional)\
+&nbsp; -v &emsp;&emsp; verbose flag (optional)\
+&nbsp; -C &emsp;&emsp; ecDNA clustering flag (optional)\
 &nbsp; -q &emsp;&emsp; cell pushing strength\
+&nbsp; -n &emsp;&emsp; ecDNA copy number in initial cell\
 &nbsp; -x &emsp;&emsp; random seed
 
-Plot the final spatial data in tissue.csv by running:
+Flags should be specified before numerical arguments. Plot the final spatial data in tissue.csv by running:
 
 ```
-python3 ./plot_spatial_data.py [--path PATH]
+python3 ./plot_spatial_data.py [--path PATH] [--plotCopyNumber]
 ```
 
-where [PATH] is the file path the relevant tissue.csv file.
+where [PATH] is the file path the relevant tissue.csv file, and [--plotCopyNumber] specifies colouring cells according to their ecDNA copy number (if flag not specified, then cells are coloured according to ecDNA+ or ecDNA- status).

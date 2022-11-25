@@ -27,11 +27,11 @@ const int _maxsize = 1e5;
 // Next-nearest-neighbour neighbourhood -> 8 neighbours 
 //const int NEIGHBOURHOOD = 8;
 
-double s, tmut;
 int q, seed;
 
-double radius_double, t, r_birth, r_death, r_birth_normalised, r_death_normalised, rand_double, cell_cell_chord_gradient, cell_cell_chord_yIntercept, min_move_distance;
+double radius_double, t, r_birth, r_death, r_birth_normalised, r_death_normalised, rand_double, cell_cell_chord_gradient, cell_cell_chord_yIntercept, min_move_distance, selection_coeff;
 double optimal_direction_i,  optimal_direction_j, optimal_vector_norm, vector_norm, rescaled_min_length, scalar_prod, dist, nearest_space_distance, x_boundary_intersect, y_boundary_intersect;
+double weibull_shape, weibull_scale, birth_rate_sum;
 int radius, Ntot, Nwt, iter, x, y, cell_x, cell_y, dir, queue, ind, length, coordX, coordY, previous_link_direction, chain_length;
 int arising_time, x_b, y_b, direction, chosen_direction, min_length, num_mins, chosen_min, doubled_ecDNA_copyNumber, daughter_ecDNA_copyNumber1, daughter_ecDNA_copyNumber2;
 int empty_cell_x, empty_cell_y, search_radius, num_nearest_empty_cells, rand_int, vertical_direction, horizontal_direction, i_lowerBound, j_lowerBound, i_upperBound, j_upperBound;
@@ -100,6 +100,23 @@ class Cell
 
 
 
+// Fitness function cells carrying x copies of ecDNA (Weibull function with parameters (shape)=1.8; (scale)=40)
+double fitness(int x)
+{
+
+	weibull_shape = 1.8;
+	weibull_scale = 40.0;
+
+	return 50.0 * (weibull_shape/weibull_scale) * pow((x/weibull_scale) , weibull_shape-1) * exp(-pow((x/weibull_scale) , weibull_shape));
+
+}
+
+
+
+
+
+
+
 
 // Surface growth with division rate proportional to number of empty neighbours
 void surface_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot , int *x_b , int *y_b , int radius )
@@ -141,7 +158,7 @@ void surface_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot , int
 
 
 // Straight line pushing 
-void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot , int *x_b , int *y_b , int radius)
+void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot , int *x_b , int *y_b , double *r_birth , int radius)
 {
 
 	//cout << "\nCell at (x , y) = (" << cell_x << " , " << cell_y << ") wants to divide." << endl;
@@ -582,22 +599,12 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
   			// Choose which daughter cell to put ecDNA cluster (binomial distribution of ecDNA clusters)
   			rand_double = drand48();
 
-  			if (rand_double < 0.5)
-  			{
-  				daughter_ecDNA_copyNumber1 += clusterSize;
-  				//cout << "Daughter cell 1 receives ecDNA hub of size " << clusterSize << endl;
-  				//continue;
-  			}
+  			if (rand_double < 0.5) daughter_ecDNA_copyNumber1 += clusterSize;
 
   			// If not chosen to be placed into daughter cell 1, it goes in daughter cell 2
-  			else 
-  			{
-  				daughter_ecDNA_copyNumber2 += clusterSize;
-  				//cout << "Daughter cell 2 receives ecDNA hub of size " << clusterSize << endl;
-  			}
+  			else daughter_ecDNA_copyNumber2 += clusterSize;
 
   			motherCell_copyNumber -= clusterSize;
-  			//cout << "Mother cell ecDNA copy number = " << motherCell_copyNumber << endl; 
   		}
 
   		//cout << "Finished distributing ecDNA hubs. Daughter cell 1 has " << daughter_ecDNA_copyNumber1 << " ecDNA, and daughter cell 2 has " << daughter_ecDNA_copyNumber2 << endl;
@@ -605,6 +612,13 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
   		// Create daughter cell
 		tissue[cell_x][cell_y].set_ecDNA(daughter_ecDNA_copyNumber1);
 		tissue[chainX[0]][chainY[0]].set_ecDNA(daughter_ecDNA_copyNumber2);
+
+
+		// Update total sum of birth rates in the system after cell division
+		*r_birth -= (1.0 + selection_coeff*fitness(int(0.5*doubled_ecDNA_copyNumber)));		// Subtract contribution from mother cell
+		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber1));		// Add contribution from daughter cell 1
+		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber2));		// Add contribution from daughter cell 2
+
 	}
 
 
@@ -660,6 +674,8 @@ int main(int argc, char** argv)
 	// Reset time and tissue size variables
 	t = 0.0;
 	Ntot = 0;
+	selection_coeff = 0.0;
+	q = 0;
 
 
 
@@ -669,7 +685,7 @@ int main(int argc, char** argv)
 	//================== Parse command line arguments ====================//
 	int c;
 
-	while ((c = getopt (argc, argv, "vCx:q:n:")) != -1)
+	while ((c = getopt (argc, argv, "vCx:q:n:s:")) != -1)
 	switch (c)
 	{
 		// Verbose flag
@@ -695,6 +711,11 @@ int main(int argc, char** argv)
 		// ecDNA copy number in initial cell
 		case 'n':
 			initial_copyNumber = atoi(optarg);
+			break;
+
+		// Selection coefficient
+		case 's':
+			selection_coeff = atof(optarg);
 			break;
 
 		case '?':
@@ -806,6 +827,9 @@ int main(int argc, char** argv)
 	x_b = 10;
 	y_b = 10;
 
+	// Initial total sum of all birth rates in system (initial cell with initial_copyNumber ecDNA)
+	r_birth = 1.0 + selection_coeff*fitness(initial_copyNumber);
+
 
 	do
 	{
@@ -818,16 +842,13 @@ int main(int argc, char** argv)
 
 		// Set birth and death rates based on initial rates from West et al. (2021)
 		//r_birth = 0.5*(1.1);
-		r_birth = 1.0;
-		r_death = 0.5;
+		//r_birth = 1.0;
+		r_death = 0.5*Ntot;
 
 
 
-		// Multiply rates by the relevant number of cells (not necessary for simple neutral model with just birth and death, but we do this for consistency)
-		r_birth *= Ntot;
-		r_death *= Ntot;
-
-
+		//cout << "Iter #" << iter << " | r_birth = " << r_birth << " | r_death = " << r_death << endl;
+		//if (iter == 5) exit(0); 
 
 
 		// Compute normalised reaction rates
@@ -881,31 +902,58 @@ int main(int argc, char** argv)
 
 
 
-		// Randomly select one cell to divide or die
-		cell_x = 0;
-		cell_y = 0;
-
-		do
-		{
-			cell_x = (int)((2*(x_b))*drand48()) + radius - x_b;
-			cell_y = (int)((2*(y_b))*drand48()) + radius - y_b;
-		}
-		while (tissue[cell_x][cell_y].ecDNA == -1);
-
-
-		//cout << "Chosen cell is (x,y) = (" << cell_x << " , " << cell_y << ") -> " << tissue[cell_x][cell_y].ecDNA << endl;
-
-
-
-
-
-
-
 		// If division:
 		if (BIRTH)
 		{
+
+			// if (selection_coeff == 0)
+			// {
+			// 	// Randomly select one cell to die (all birth rates are equal)
+			// 	cell_x = 0;
+			// 	cell_y = 0;
+
+			// 	do
+			// 	{
+			// 		cell_x = (int)((2*(x_b))*drand48()) + radius - x_b;
+			// 		cell_y = (int)((2*(y_b))*drand48()) + radius - y_b;
+			// 	}
+			// 	while (tissue[cell_x][cell_y].ecDNA == -1);
+			// }
+
+			// else
+			// {
+				// Choose cell to divide based on its division rate
+				birth_rate_sum = 0.0;
+				cell_x = -1;
+				cell_y = -1;
+				rand_double = drand48();
+
+				// Loop over all cells in system
+				for (int i = 0; i < (2*radius); i++)
+				{
+					for (int j = 0; j < (2*radius); j++)
+					{
+						if (tissue[i][j].ecDNA == -1) continue; 
+
+						// Add contribution of cell
+						birth_rate_sum += (1.0 + selection_coeff*fitness(tissue[i][j].ecDNA));
+						//cout << "Birth rate sum = " << birth_rate_sum << endl;
+
+						//cout << "Checking if " << rand_double << " < " << birth_rate_sum/r_birth << endl;
+						if (rand_double <= birth_rate_sum/r_birth)
+						{
+							cell_x = i;
+							cell_y = j;
+							break;
+						}
+					}
+					if ((cell_x != -1) && (cell_y != -1)) break;
+				}
+			// }
+
+
 			// Cell divides
-			straight_line_division(tissue , cell_x , cell_y , &Ntot , &x_b , &y_b , radius);
+			straight_line_division(tissue , cell_x , cell_y , &Ntot , &x_b , &y_b , &r_birth , radius);
 		}
 
 
@@ -915,6 +963,22 @@ int main(int argc, char** argv)
 		// If death:
 		if ((DEATH) && (Ntot > 1))
 		{
+
+			// Randomly select one cell to die (all death rates are equal)
+			cell_x = 0;
+			cell_y = 0;
+
+			do
+			{
+				cell_x = (int)((2*(x_b))*drand48()) + radius - x_b;
+				cell_y = (int)((2*(y_b))*drand48()) + radius - y_b;
+			}
+			while (tissue[cell_x][cell_y].ecDNA == -1);
+
+
+			// Subtract contribution of cell to r_birth
+			r_birth -= (1.0 + selection_coeff*fitness(tissue[cell_x][cell_y].ecDNA));
+
 			// Cell dies
 			tissue[cell_x][cell_y].set_ecDNA(-1);
 			Ntot -= 1;
@@ -950,18 +1014,18 @@ int main(int argc, char** argv)
 
 	stringstream f;
 	f.str("");
-	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_clustering=" << boolalpha << clustering << "/seed=" << seed;
+	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_clustering=" << boolalpha << clustering << "/seed=" << seed;
 	DIR *dir = opendir(f.str().c_str());
 	if(!dir)
 	{
 		f.str("");
-		f << "mkdir -p ./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_clustering=" << boolalpha << clustering << "/seed=" << seed;
+		f << "mkdir -p ./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_clustering=" << boolalpha << clustering << "/seed=" << seed;
 		system(f.str().c_str());
 	}
 
 	ofstream tissue_file;
 	f.str("");
-	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_clustering=" << boolalpha << clustering << "/seed=" << seed << "/tissue.csv";
+	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_clustering=" << boolalpha << clustering << "/seed=" << seed << "/tissue.csv";
 	tissue_file.open(f.str().c_str());
 
 

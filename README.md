@@ -12,6 +12,7 @@ g++ -o ./spatial_ecDNA_patterns_2D ./spatial_ecDNA_patterns_2D.cpp
 where\
 &nbsp; -v &emsp;&emsp; verbose flag (optional)\
 &nbsp; -C &emsp;&emsp; ecDNA clustering flag (optional)\
+&nbsp; -F &emsp;&emsp; flag to set ecDNA copy number dependent selection model. Default is flat selection based simply on ecDNA+ or ecDNA- status of cell (optional)\
 &nbsp; -q &emsp;&emsp; cell pushing strength\
 &nbsp; -n &emsp;&emsp; ecDNA copy number in initial cell\
 &nbsp; -s &emsp;&emsp; selection strength. Scalar multiplier for the ecDNA dependent birth rate function, with s=0 giving rise to neutral growth and s>0 giving rise to positive ecDNA copy number dependent selection\

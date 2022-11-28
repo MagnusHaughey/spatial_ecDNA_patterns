@@ -6,7 +6,7 @@ Execute a simulation by running:
 
 ```
 g++ -o ./spatial_ecDNA_patterns_2D ./spatial_ecDNA_patterns_2D.cpp
-./spatial_ecDNA_patterns_2D [-v] [-C] [-q Q] [-n N] [-x X]
+./spatial_ecDNA_patterns_2D [-v] [-C] [-q Q] [-n N] [-s S] [-x X]
 ```
 
 where\
@@ -14,6 +14,7 @@ where\
 &nbsp; -C &emsp;&emsp; ecDNA clustering flag (optional)\
 &nbsp; -q &emsp;&emsp; cell pushing strength\
 &nbsp; -n &emsp;&emsp; ecDNA copy number in initial cell\
+&nbsp; -s &emsp;&emsp; selection strength. Scalar multiplier for the ecDNA dependent birth rate function, with s=0 giving rise to neutral growth and s>0 giving rise to positive ecDNA copy number dependent selection\
 &nbsp; -x &emsp;&emsp; random seed
 
 Flags should be specified before numerical arguments. Plot the final spatial data in tissue.csv by running:

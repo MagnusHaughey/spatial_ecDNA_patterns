@@ -906,22 +906,22 @@ int main(int argc, char** argv)
 		if (BIRTH)
 		{
 
-			// if (selection_coeff == 0)
-			// {
-			// 	// Randomly select one cell to die (all birth rates are equal)
-			// 	cell_x = 0;
-			// 	cell_y = 0;
+			if (selection_coeff == 0)
+			{
+				// Randomly select one cell to die (all birth rates are equal)
+				cell_x = 0;
+				cell_y = 0;
 
-			// 	do
-			// 	{
-			// 		cell_x = (int)((2*(x_b))*drand48()) + radius - x_b;
-			// 		cell_y = (int)((2*(y_b))*drand48()) + radius - y_b;
-			// 	}
-			// 	while (tissue[cell_x][cell_y].ecDNA == -1);
-			// }
+				do
+				{
+					cell_x = (int)((2*(x_b))*drand48()) + radius - x_b;
+					cell_y = (int)((2*(y_b))*drand48()) + radius - y_b;
+				}
+				while (tissue[cell_x][cell_y].ecDNA == -1);
+			}
 
-			// else
-			// {
+			else
+			{
 				// Choose cell to divide based on its division rate
 				birth_rate_sum = 0.0;
 				cell_x = -1;
@@ -949,7 +949,7 @@ int main(int argc, char** argv)
 					}
 					if ((cell_x != -1) && (cell_y != -1)) break;
 				}
-			// }
+			}
 
 
 			// Cell divides

@@ -118,42 +118,6 @@ double fitness(int x)
 
 
 
-// Surface growth with division rate proportional to number of empty neighbours
-void surface_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot , int *x_b , int *y_b , int radius )
-{
-
-
-	// Randomly select the direction in which to divide
-	do
-	{
-		x = (int)(drand48()*3.0) - 1;
-		y = (int)(drand48()*3.0) - 1;
-	}
-	while ((x == 0) && (y == 0));
-
-	if (tissue[cell_x + x][cell_y + y].ecDNA == -1)		// Check if neighbour is empty
-	{
-
-
-		// Create daughter cell
-		tissue[cell_x + x][cell_y + y].set_ecDNA(tissue[cell_x][cell_y].ecDNA);
-
-		*Ntot += 1;
-
-
-		// Update bounds on tissue size
-		if (fabs(cell_x + x - radius) > *x_b) *x_b = fabs(cell_x + x - radius);
-		if (fabs(cell_y + y - radius) > *y_b) *y_b = fabs(cell_y + y - radius);
-	}
-
-}
-
-
-
-
-
-
-
 
 
 

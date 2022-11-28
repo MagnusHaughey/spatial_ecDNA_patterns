@@ -535,6 +535,13 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 		// Create daughter cell
 		tissue[cell_x][cell_y].set_ecDNA(daughter_ecDNA_copyNumber1);
 		tissue[chainX[0]][chainY[0]].set_ecDNA(daughter_ecDNA_copyNumber2);
+
+
+		// Update total sum of birth rates in the system after cell division
+		*r_birth -= (1.0 + selection_coeff*fitness(int(0.5*doubled_ecDNA_copyNumber)));		// Subtract contribution from mother cell
+		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber1));		// Add contribution from daughter cell 1
+		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber2));		// Add contribution from daughter cell 2
+
 	}
 
 
@@ -590,13 +597,15 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 		cout << "Error with pushing algorithm!" << endl;
 		exit(0);
 	}
-
 }
 
 
 
 
 
+
+
+// Parse command line arguments (Flags and numerical arguments)
 void parse_command_line_arguments(int argc, char** argv , bool *quiet , int *seed , int *q , bool *clustering , int *initial_copyNumber , double *selection_coeff)
 {
 	int c;
@@ -673,6 +682,69 @@ void parse_command_line_arguments(int argc, char** argv , bool *quiet , int *see
 
 
 
+// Set up tissue (i.e. array of cells)
+Cell** initialise_tissue(int _maxsize , int *Ntot , int initial_copyNumber)
+{
+	// Estimate radius of final system based on _maxsize
+	radius_double = pow ( (_maxsize/M_PI) , (1.0/2.0) );
+
+
+	// Slightly over-estimate this to avoid segmentation errors
+	radius = (int)(1.5*radius_double);
+
+
+	if (!quiet) cout << " " << endl;
+
+
+	// Set up the system of cells, called tissue
+	Cell ** tissue = new Cell*[2*radius];
+	for (int i = 0; i < (2*radius); i++)
+	{
+		tissue[i] = new Cell[2*radius];
+
+		for (int j = 0; j < (2*radius); j++)
+		{
+			tissue[i][j].set_ecDNA(-1);		// Cells with ecDNA copy number = -1 represent empty lattice points
+		}
+
+		if (!quiet) printf(" Initialising tissue... %i%%\r", (int)((i+1)*100.0/(2*radius)));
+		if (!quiet) fflush(stdout);
+	}
+	if (!quiet) printf(" Initialising tissue... Done.\r");
+	if (!quiet) cout << " " << endl;
+		
+
+
+
+
+	// Seed first tissue cell at (x,y) = (radius , radius)
+	tissue[radius][radius].set_ecDNA(initial_copyNumber);
+
+	*Ntot += 1;
+
+	return tissue;
+}
+
+
+
+
+
+
+// Compute normalised birth and death rates 
+void compute_normalised_birth_and_death_rates(int Ntot , double r_birth , double *r_birth_normalised , double *r_death_normalised)
+{
+	r_death = 0.5*Ntot;
+
+	// Compute normalised reaction rates
+	*r_birth_normalised = r_birth/(r_birth + r_death);
+	*r_death_normalised = r_death/(r_birth + r_death);
+}
+
+
+
+
+
+
 
 
 
@@ -709,81 +781,8 @@ int main(int argc, char** argv)
 	q = 0;
 
 
-
-
-
-
 	//================== Parse command line arguments ====================//
 	parse_command_line_arguments(argc , argv , &quiet , &seed , &q , &clustering , &initial_copyNumber , &selection_coeff);
-
-	// int c;
-
-	// while ((c = getopt (argc, argv, "vCx:q:n:s:")) != -1)
-	// switch (c)
-	// {
-	// 	// Verbose flag
-	// 	case 'v':
-	// 		quiet = false;
-	// 		break;
-
-	// 	// Random seed
-	// 	case 'x':
-	// 		seed = atoi(optarg);		
-	// 		break;
-
-	// 	// Set pushing limit for division algorithm
-	// 	case 'q':
-	// 		q = atoi(optarg);		
-	// 		break;
-
-	// 	// Clustering parameter (C=0 for no ecDNA clustering, C=1 for clustering)
-	// 	case 'C':
-	// 		clustering = true;
-	// 		break;
-
-	// 	// ecDNA copy number in initial cell
-	// 	case 'n':
-	// 		initial_copyNumber = atoi(optarg);
-	// 		break;
-
-	// 	// Selection coefficient
-	// 	case 's':
-	// 		selection_coeff = atof(optarg);
-	// 		break;
-
-	// 	case '?':
-	// 		if (optopt == 'c')
-	// 			fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-	// 		else if (isprint (optopt))
-	// 			fprintf (stderr, "Unknown option `-%c'.\n", optopt);
-	// 		else
-	// 			fprintf (stderr,
-	// 			"Unknown option character `\\x%x'.\n",
-	// 			optopt);
-	// 	return 1;
-	// 	default:
-	// 	abort ();
-	// }
-
-
-
-
-
-	// // Checks on input parameter values
-	// if (q < 0)
-	// {
-	// 	cout << "Pushing parameter q must be greater than 0. Exiting." << endl;
-	// 	exit(0);
-	// }
-
-
-
-	cout << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_clustering=" << boolalpha << clustering << "/seed=" << seed << endl;
-	exit(0);
-
-
-
-
 
 
 
@@ -796,68 +795,14 @@ int main(int argc, char** argv)
 
 
 
-
-
-
-
-
-
-
-
-
-
 	//================== Initialise tissue ====================//
-
-	// Estimate radius of final system based on _maxsize
-	radius_double = pow ( (_maxsize/M_PI) , (1.0/2.0) );
-
-
-	// Slightly over-estimate this to avoid segmentation errors
-	radius = (int)(1.5*radius_double);
-
-
-	if (!quiet) cout << " " << endl;
-
-
-	// Set up the system of cells, called tissue
-	Cell ** tissue = new Cell*[2*radius];
-	for (int i = 0; i < (2*radius); i++)
-	{
-		tissue[i] = new Cell[2*radius];
-
-		for (int j = 0; j < (2*radius); j++)
-		{
-
-			tissue[i][j].set_ecDNA(-1);		// Cells with ecDNA copy number = -1 represent empty lattice points
-		
-		}
-		if (!quiet) printf(" Initialising tissue... %i%%\r", (int)((i+1)*100.0/(2*radius)));
-		if (!quiet) fflush(stdout);
-	}
-	if (!quiet) printf(" Initialising tissue... Done.\r");
-	if (!quiet) cout << " " << endl;
-		
-
-
-
-
-	// Seed first tissue cell at (x,y) = (radius , radius)
-	tissue[radius][radius].set_ecDNA(initial_copyNumber);
-
-
-	Ntot += 1;
-
-
-
-
-
+	Cell ** tissue = initialise_tissue(_maxsize , &Ntot , initial_copyNumber);
 
 
 
 
 
 	//================== Simulate tissue growth ==================//
-
 	iter = 0;
 	x = 0;
 	y = 0;
@@ -872,26 +817,10 @@ int main(int argc, char** argv)
 	{
 		
 		++iter;
+		
 
-		//cout << "N = " << Ntot << endl;
-		//if (iter == 30) exit(0);
-
-
-		// Set birth and death rates based on initial rates from West et al. (2021)
-		//r_birth = 0.5*(1.1);
-		//r_birth = 1.0;
-		r_death = 0.5*Ntot;
-
-
-
-		//cout << "Iter #" << iter << " | r_birth = " << r_birth << " | r_death = " << r_death << endl;
-		//if (iter == 5) exit(0); 
-
-
-		// Compute normalised reaction rates
-		r_birth_normalised = r_birth/(r_birth + r_death);
-		r_death_normalised = r_death/(r_birth + r_death);
-
+		// Re-evaluate birth and death rates
+		compute_normalised_birth_and_death_rates(Ntot , r_birth , &r_birth_normalised , &r_death_normalised);
 
 
 
@@ -918,10 +847,12 @@ int main(int argc, char** argv)
 		if (rand_double <= r_birth_normalised)
 		{
 			BIRTH = true;
+			//cout << "BIRTH" << endl;
 		}
 		else if (rand_double <= r_birth_normalised + r_death_normalised)
 		{
 			DEATH = true;
+			//cout << "DEATH" << endl;
 		}
 		else
 		{

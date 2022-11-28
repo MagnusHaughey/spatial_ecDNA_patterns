@@ -116,11 +116,6 @@ double fitness(int x)
 
 
 
-
-
-
-
-
 // Straight line pushing 
 void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot , int *x_b , int *y_b , double *r_birth , int radius)
 {
@@ -602,6 +597,78 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 
 
 
+void parse_command_line_arguments(int argc, char** argv , bool *quiet , int *seed , int *q , bool *clustering , int *initial_copyNumber , double *selection_coeff)
+{
+	int c;
+
+	while ((c = getopt (argc, argv, "vCx:q:n:s:")) != -1)
+	switch (c)
+	{
+		// Verbose flag
+		case 'v':
+			*quiet = false;
+			break;
+
+		// Random seed
+		case 'x':
+			*seed = atoi(optarg);		
+			break;
+
+		// Set pushing limit for division algorithm
+		case 'q':
+			*q = atoi(optarg);		
+			break;
+
+		// Clustering parameter (C=0 for no ecDNA clustering, C=1 for clustering)
+		case 'C':
+			*clustering = true;
+			break;
+
+		// ecDNA copy number in initial cell
+		case 'n':
+			*initial_copyNumber = atoi(optarg);
+			break;
+
+		// Selection coefficient
+		case 's':
+			*
+			selection_coeff = atof(optarg);
+			break;
+
+		case '?':
+			if (optopt == 'c')
+				fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+			else if (isprint (optopt))
+				fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+			else
+				fprintf (stderr,
+				"Unknown option character `\\x%x'.\n",
+				optopt);
+		//return 1;
+		default:
+		abort ();
+	}
+
+
+
+
+
+	// Checks on input parameter values
+	if (*q < 0)
+	{
+		cout << "Pushing parameter q must be greater than 0. Exiting." << endl;
+		exit(0);
+	}
+
+	if (*initial_copyNumber < 0)
+	{
+		cout << "Initial copy number must be 0 or greater. Exiting." << endl;
+		exit(0);
+	}
+}
+
+
+
 
 
 
@@ -647,70 +714,76 @@ int main(int argc, char** argv)
 
 
 	//================== Parse command line arguments ====================//
-	int c;
+	parse_command_line_arguments(argc , argv , &quiet , &seed , &q , &clustering , &initial_copyNumber , &selection_coeff);
 
-	while ((c = getopt (argc, argv, "vCx:q:n:s:")) != -1)
-	switch (c)
-	{
-		// Verbose flag
-		case 'v':
-			quiet = false;
-			break;
+	// int c;
 
-		// Random seed
-		case 'x':
-			seed = atoi(optarg);		
-			break;
+	// while ((c = getopt (argc, argv, "vCx:q:n:s:")) != -1)
+	// switch (c)
+	// {
+	// 	// Verbose flag
+	// 	case 'v':
+	// 		quiet = false;
+	// 		break;
 
-		// Set pushing limit for division algorithm
-		case 'q':
-			q = atoi(optarg);		
-			break;
+	// 	// Random seed
+	// 	case 'x':
+	// 		seed = atoi(optarg);		
+	// 		break;
 
-		// Clustering parameter (C=0 for no ecDNA clustering, C=1 for clustering)
-		case 'C':
-			clustering = true;
-			break;
+	// 	// Set pushing limit for division algorithm
+	// 	case 'q':
+	// 		q = atoi(optarg);		
+	// 		break;
 
-		// ecDNA copy number in initial cell
-		case 'n':
-			initial_copyNumber = atoi(optarg);
-			break;
+	// 	// Clustering parameter (C=0 for no ecDNA clustering, C=1 for clustering)
+	// 	case 'C':
+	// 		clustering = true;
+	// 		break;
 
-		// Selection coefficient
-		case 's':
-			selection_coeff = atof(optarg);
-			break;
+	// 	// ecDNA copy number in initial cell
+	// 	case 'n':
+	// 		initial_copyNumber = atoi(optarg);
+	// 		break;
 
-		case '?':
-			if (optopt == 'c')
-				fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-			else if (isprint (optopt))
-				fprintf (stderr, "Unknown option `-%c'.\n", optopt);
-			else
-				fprintf (stderr,
-				"Unknown option character `\\x%x'.\n",
-				optopt);
-		return 1;
-		default:
-		abort ();
-	}
+	// 	// Selection coefficient
+	// 	case 's':
+	// 		selection_coeff = atof(optarg);
+	// 		break;
 
-
-
-
-
-	// Checks on input parameter values
-	if (q < 0)
-	{
-		cout << "Pushing parameter q must be greater than 0. Exiting." << endl;
-		exit(0);
-	}
+	// 	case '?':
+	// 		if (optopt == 'c')
+	// 			fprintf (stderr, "Option -%c requires an argument.\n", optopt);
+	// 		else if (isprint (optopt))
+	// 			fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+	// 		else
+	// 			fprintf (stderr,
+	// 			"Unknown option character `\\x%x'.\n",
+	// 			optopt);
+	// 	return 1;
+	// 	default:
+	// 	abort ();
+	// }
 
 
 
-	//if (clustering == true) cout << "Clustering" << endl;
-	//else cout << "no clustering" << endl;
+
+
+	// // Checks on input parameter values
+	// if (q < 0)
+	// {
+	// 	cout << "Pushing parameter q must be greater than 0. Exiting." << endl;
+	// 	exit(0);
+	// }
+
+
+
+	cout << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_clustering=" << boolalpha << clustering << "/seed=" << seed << endl;
+	exit(0);
+
+
+
+
 
 
 

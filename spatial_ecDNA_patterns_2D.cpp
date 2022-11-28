@@ -604,7 +604,6 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 
 
 
-
 // Parse command line arguments (Flags and numerical arguments)
 void parse_command_line_arguments(int argc, char** argv , bool *quiet , int *seed , int *q , bool *clustering , int *initial_copyNumber , double *selection_coeff)
 {
@@ -681,7 +680,6 @@ void parse_command_line_arguments(int argc, char** argv , bool *quiet , int *see
 
 
 
-
 // Set up tissue (i.e. array of cells)
 Cell** initialise_tissue(int _maxsize , int *Ntot , int initial_copyNumber)
 {
@@ -729,7 +727,6 @@ Cell** initialise_tissue(int _maxsize , int *Ntot , int initial_copyNumber)
 
 
 
-
 // Compute normalised birth and death rates 
 void compute_normalised_birth_and_death_rates(int Ntot , double r_birth , double *r_birth_normalised , double *r_death_normalised)
 {
@@ -738,6 +735,108 @@ void compute_normalised_birth_and_death_rates(int Ntot , double r_birth , double
 	// Compute normalised reaction rates
 	*r_birth_normalised = r_birth/(r_birth + r_death);
 	*r_death_normalised = r_death/(r_birth + r_death);
+}
+
+
+
+
+
+
+// Choose next event in Gillespie algorithm
+void choose_next_event(bool *BIRTH , bool *DEATH , double r_birth_normalised , double r_death_normalised)
+{
+	*BIRTH = false;
+	*DEATH = false;
+
+	rand_double = drand48();
+	if (rand_double <= r_birth_normalised)
+	{
+		*BIRTH = true;
+		//cout << "BIRTH" << endl;
+	}
+	else if (rand_double <= r_birth_normalised + r_death_normalised)
+	{
+		*DEATH = true;
+		//cout << "DEATH" << endl;
+	}
+	else
+	{
+		cout << "Problem with Gillespie rates..." << endl;
+		exit(0);
+	}
+}
+
+
+
+
+
+
+// Select cell in tissue with all cells having equal probability of being chosen
+void select_cell_flat_probability(Cell ** tissue , int *cell_x , int *cell_y , int radius , int x_b , int y_b)
+{
+	// Randomly select one cell to die (all birth rates are equal)
+	*cell_x = 0;
+	*cell_y = 0;
+
+	do
+	{
+		*cell_x = (int)((2*(x_b))*drand48()) + radius - x_b;
+		*cell_y = (int)((2*(y_b))*drand48()) + radius - y_b;
+	}
+	while (tissue[*cell_x][*cell_y].ecDNA == -1);
+}
+
+
+
+
+
+
+// Select cell in tissue when cells have different birth rates
+void select_cell_unequal_birth_rates(Cell ** tissue , int *cell_x , int *cell_y , int radius)
+{
+	// Choose cell to divide based on its division rate
+	birth_rate_sum = 0.0;
+	*cell_x = -1;
+	*cell_y = -1;
+	rand_double = drand48();
+
+	// Loop over all cells in system
+	for (int i = 0; i < (2*radius); i++)
+	{
+		for (int j = 0; j < (2*radius); j++)
+		{
+			if (tissue[i][j].ecDNA == -1) continue; 
+
+			// Add contribution of cell
+			birth_rate_sum += (1.0 + selection_coeff*fitness(tissue[i][j].ecDNA));
+			//cout << "Birth rate sum = " << birth_rate_sum << endl;
+
+			//cout << "Checking if " << rand_double << " < " << birth_rate_sum/r_birth << endl;
+			if (rand_double <= birth_rate_sum/r_birth)
+			{
+				*cell_x = i;
+				*cell_y = j;
+				break;
+			}
+		}
+		if ((*cell_x != -1) && (*cell_y != -1)) break;
+	}
+}
+
+
+
+
+
+
+// Kill cell and remove from lattice
+void kill_cell(Cell ** tissue , double *r_birth , int cell_x , int cell_y , double selection_coeff , int *Ntot)
+{
+	// Subtract contribution of cell to r_birth
+	*r_birth -= (1.0 + selection_coeff*fitness(tissue[cell_x][cell_y].ecDNA));
+
+	// Cell dies
+	tissue[cell_x][cell_y].set_ecDNA(-1);
+	*Ntot -= 1;
 }
 
 
@@ -817,7 +916,7 @@ int main(int argc, char** argv)
 	{
 		
 		++iter;
-		
+
 
 		// Re-evaluate birth and death rates
 		compute_normalised_birth_and_death_rates(Ntot , r_birth , &r_birth_normalised , &r_death_normalised);
@@ -834,37 +933,8 @@ int main(int argc, char** argv)
 
 
 
-
-
-
-
-
-		// Gillespie rates
-		BIRTH = false;
-		DEATH = false;
-
-		rand_double = drand48();
-		if (rand_double <= r_birth_normalised)
-		{
-			BIRTH = true;
-			//cout << "BIRTH" << endl;
-		}
-		else if (rand_double <= r_birth_normalised + r_death_normalised)
-		{
-			DEATH = true;
-			//cout << "DEATH" << endl;
-		}
-		else
-		{
-			cout << "Problem with Gillespie rates..." << endl;
-			exit(0);
-		}
-
-
-
-
-
-
+		// Choose birth or death based on normalised rates
+		choose_next_event(&BIRTH , &DEATH , r_birth_normalised , r_death_normalised);
 
 
 
@@ -873,52 +943,11 @@ int main(int argc, char** argv)
 		// If division:
 		if (BIRTH)
 		{
+			// Randomly select one cell to divide (all birth rates are equal)
+			if (selection_coeff == 0) select_cell_flat_probability(tissue , &cell_x , &cell_y , radius , x_b , y_b);
 
-			if (selection_coeff == 0)
-			{
-				// Randomly select one cell to die (all birth rates are equal)
-				cell_x = 0;
-				cell_y = 0;
-
-				do
-				{
-					cell_x = (int)((2*(x_b))*drand48()) + radius - x_b;
-					cell_y = (int)((2*(y_b))*drand48()) + radius - y_b;
-				}
-				while (tissue[cell_x][cell_y].ecDNA == -1);
-			}
-
-			else
-			{
-				// Choose cell to divide based on its division rate
-				birth_rate_sum = 0.0;
-				cell_x = -1;
-				cell_y = -1;
-				rand_double = drand48();
-
-				// Loop over all cells in system
-				for (int i = 0; i < (2*radius); i++)
-				{
-					for (int j = 0; j < (2*radius); j++)
-					{
-						if (tissue[i][j].ecDNA == -1) continue; 
-
-						// Add contribution of cell
-						birth_rate_sum += (1.0 + selection_coeff*fitness(tissue[i][j].ecDNA));
-						//cout << "Birth rate sum = " << birth_rate_sum << endl;
-
-						//cout << "Checking if " << rand_double << " < " << birth_rate_sum/r_birth << endl;
-						if (rand_double <= birth_rate_sum/r_birth)
-						{
-							cell_x = i;
-							cell_y = j;
-							break;
-						}
-					}
-					if ((cell_x != -1) && (cell_y != -1)) break;
-				}
-			}
-
+			// Choose cell to divide based on its division rate
+			else select_cell_unequal_birth_rates(tissue , &cell_x , &cell_y , radius);
 
 			// Cell divides
 			straight_line_division(tissue , cell_x , cell_y , &Ntot , &x_b , &y_b , &r_birth , radius);
@@ -931,25 +960,11 @@ int main(int argc, char** argv)
 		// If death:
 		if ((DEATH) && (Ntot > 1))
 		{
-
-			// Randomly select one cell to die (all death rates are equal)
-			cell_x = 0;
-			cell_y = 0;
-
-			do
-			{
-				cell_x = (int)((2*(x_b))*drand48()) + radius - x_b;
-				cell_y = (int)((2*(y_b))*drand48()) + radius - y_b;
-			}
-			while (tissue[cell_x][cell_y].ecDNA == -1);
-
-
-			// Subtract contribution of cell to r_birth
-			r_birth -= (1.0 + selection_coeff*fitness(tissue[cell_x][cell_y].ecDNA));
+			// Randomly select one cell to die (all birth rates are equal)
+			select_cell_flat_probability(tissue , &cell_x , &cell_y , radius , x_b , y_b);
 
 			// Cell dies
-			tissue[cell_x][cell_y].set_ecDNA(-1);
-			Ntot -= 1;
+			kill_cell(tissue , &r_birth , cell_x , cell_y , selection_coeff , &Ntot);
 		}
 
 

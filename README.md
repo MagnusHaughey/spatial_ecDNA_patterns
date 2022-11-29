@@ -6,7 +6,7 @@ Execute a simulation by running:
 
 ```
 g++ -o ./spatial_ecDNA_patterns_2D ./spatial_ecDNA_patterns_2D.cpp
-./spatial_ecDNA_patterns_2D [-v] [-C] [-q Q] [-n N] [-s S] [-x X]
+./spatial_ecDNA_patterns_2D [-v] [-C] [-F] [-q Q] [-n N] [-s S] [-x X]
 ```
 
 where\

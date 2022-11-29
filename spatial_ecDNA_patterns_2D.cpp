@@ -3,6 +3,7 @@
 # include <fstream>
 # include <sstream>
 # include <stdlib.h>
+# include <stdio.h>
 # include <cmath>
 # include <math.h>
 # include <random>
@@ -53,10 +54,10 @@ double previous_moves_distances[(int)_maxsize];
 
 bool BIRTH = false;
 bool DEATH = false;
-bool quiet = true;
 bool skip = false;
-bool clustering = false;
-bool weibull_fitness = false;
+bool verbose_flag = false;
+bool clustering_flag = false;
+bool weibull_fitness_flag = false;
 
 
 
@@ -97,9 +98,9 @@ class Cell
 
 
 // Fitness function cells carrying x copies of ecDNA (either flat, or Weibull function with parameters (shape)=1.8; (scale)=40)
-double fitness(int x , bool weibull_fitness)
+double fitness(int x , bool weibull_fitness_flag)
 {
-	if (weibull_fitness == true)
+	if (weibull_fitness_flag)
 	{
 		weibull_shape = 1.8;
 		weibull_scale = 40.0;
@@ -524,7 +525,7 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 
 
 
-	if (clustering == false)	// No ecDNA clustering
+	if (clustering_flag == false)	// No ecDNA clustering
 	{	
 		// Distribute ecDNA between two daughter cells according to binomial
 		binomial_distribution<int> draw_new_ecDNA_copyNumber(doubled_ecDNA_copyNumber , 0.5);
@@ -539,9 +540,9 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 
 
 		// Update total sum of birth rates in the system after cell division
-		*r_birth -= (1.0 + selection_coeff*fitness(int(0.5*doubled_ecDNA_copyNumber) , weibull_fitness));		// Subtract contribution from mother cell
-		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber1 , weibull_fitness));		// Add contribution from daughter cell 1
-		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber2 , weibull_fitness));		// Add contribution from daughter cell 2
+		*r_birth -= (1.0 + selection_coeff*fitness(int(0.5*doubled_ecDNA_copyNumber) , weibull_fitness_flag));		// Subtract contribution from mother cell
+		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber1 , weibull_fitness_flag));		// Add contribution from daughter cell 1
+		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber2 , weibull_fitness_flag));		// Add contribution from daughter cell 2
 
 	}
 
@@ -582,9 +583,9 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 
 
 		// Update total sum of birth rates in the system after cell division
-		*r_birth -= (1.0 + selection_coeff*fitness(int(0.5*doubled_ecDNA_copyNumber) , weibull_fitness));		// Subtract contribution from mother cell
-		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber1 , weibull_fitness));		// Add contribution from daughter cell 1
-		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber2 , weibull_fitness));		// Add contribution from daughter cell 2
+		*r_birth -= (1.0 + selection_coeff*fitness(int(0.5*doubled_ecDNA_copyNumber) , weibull_fitness_flag));		// Subtract contribution from mother cell
+		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber1 , weibull_fitness_flag));		// Add contribution from daughter cell 1
+		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber2 , weibull_fitness_flag));		// Add contribution from daughter cell 2
 
 	}
 
@@ -606,17 +607,36 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 
 
 // Parse command line arguments (Flags and numerical arguments)
-void parse_command_line_arguments(int argc, char** argv , bool *quiet , int *seed , int *q , bool *clustering , bool *weibull_fitness , int *initial_copyNumber , double *selection_coeff)
+void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , int *seed , int *q , bool *clustering_flag , bool *weibull_fitness_flag , int *initial_copyNumber , double *selection_coeff)
 {
 	int c;
+	int option_index;
+	char* arg_long = nullptr;
+	int verbose = 0;
+	int clustering = 0;
+	int weibull_fitness = 0;
 
-	while ((c = getopt (argc, argv, "vCFx:q:n:s:")) != -1)
+	static struct option long_options[] =
+        {
+        	// These options set a flag.
+		{"verbose", no_argument, &verbose, 1},
+		{"hubs", no_argument, &clustering, 1},
+		{"copyNumberDependentSelection", no_argument, &weibull_fitness, 1}
+        }; 
+
+	while ((c = getopt_long(argc, argv, "x:q:n:s:", long_options, &option_index)) != -1)
 	switch (c)
 	{
-		// Verbose flag
-		case 'v':
-			*quiet = false;
+		case 0:
+		{
+			arg_long = optarg;
 			break;
+		}
+
+		// // Verbose flag
+		// case 'v':
+		// 	*quiet = false;
+		// 	break;
 
 		// Random seed
 		case 'x':
@@ -628,14 +648,14 @@ void parse_command_line_arguments(int argc, char** argv , bool *quiet , int *see
 			*q = atoi(optarg);		
 			break;
 
-		// Clustering parameter (C=0 for no ecDNA clustering, C=1 for clustering)
-		case 'C':
-			*clustering = true;
-			break;
+		// // Clustering parameter (C=0 for no ecDNA clustering, C=1 for clustering)
+		// case 'C':
+		// 	*clustering = true;
+		// 	break;
 
-		case 'F':
-			*weibull_fitness = true;
-			break;
+		// case 'F':
+		// 	*weibull_fitness = true;
+		// 	break;
 
 		// ecDNA copy number in initial cell
 		case 'n':
@@ -663,6 +683,11 @@ void parse_command_line_arguments(int argc, char** argv , bool *quiet , int *see
 	}
 
 
+
+	// Set boolean values for flags 
+	if (verbose == 1) *verbose_flag = true;
+	if (clustering == 1) *clustering_flag = true;
+	if (weibull_fitness == 1) *weibull_fitness_flag = true;
 
 
 
@@ -696,7 +721,7 @@ Cell** initialise_tissue(int _maxsize , int *Ntot , int initial_copyNumber)
 	radius = (int)(1.5*radius_double);
 
 
-	if (!quiet) cout << " " << endl;
+	if (verbose_flag) cout << " " << endl;
 
 
 	// Set up the system of cells, called tissue
@@ -710,11 +735,11 @@ Cell** initialise_tissue(int _maxsize , int *Ntot , int initial_copyNumber)
 			tissue[i][j].set_ecDNA(-1);		// Cells with ecDNA copy number = -1 represent empty lattice points
 		}
 
-		if (!quiet) printf(" Initialising tissue... %i%%\r", (int)((i+1)*100.0/(2*radius)));
-		if (!quiet) fflush(stdout);
+		if (verbose_flag) printf(" Initialising tissue... %i%%\r", (int)((i+1)*100.0/(2*radius)));
+		if (verbose_flag) fflush(stdout);
 	}
-	if (!quiet) printf(" Initialising tissue... Done.\r");
-	if (!quiet) cout << " " << endl;
+	if (verbose_flag) printf(" Initialising tissue... Done.\r");
+	if (verbose_flag) cout << " " << endl;
 		
 
 
@@ -813,7 +838,7 @@ void select_cell_unequal_birth_rates(Cell ** tissue , int *cell_x , int *cell_y 
 			if (tissue[i][j].ecDNA == -1) continue; 
 
 			// Add contribution of cell
-			birth_rate_sum += (1.0 + selection_coeff*fitness(tissue[i][j].ecDNA , weibull_fitness));
+			birth_rate_sum += (1.0 + selection_coeff*fitness(tissue[i][j].ecDNA , weibull_fitness_flag));
 			//cout << "Birth rate sum = " << birth_rate_sum << endl;
 
 			//cout << "Checking if " << rand_double << " < " << birth_rate_sum/r_birth << endl;
@@ -837,7 +862,7 @@ void select_cell_unequal_birth_rates(Cell ** tissue , int *cell_x , int *cell_y 
 void kill_cell(Cell ** tissue , double *r_birth , int cell_x , int cell_y , double selection_coeff , int *Ntot)
 {
 	// Subtract contribution of cell to r_birth
-	*r_birth -= (1.0 + selection_coeff*fitness(tissue[cell_x][cell_y].ecDNA , weibull_fitness))
+	*r_birth -= (1.0 + selection_coeff*fitness(tissue[cell_x][cell_y].ecDNA , weibull_fitness_flag))
 	;
 
 	// Cell dies
@@ -878,7 +903,6 @@ int main(int argc, char** argv)
 	//unsigned concurentThreadsSupported = std::thread::hardware_concurrency();
 
 
-
 	// Reset time and tissue size variables
 	t = 0.0;
 	Ntot = 0;
@@ -887,8 +911,7 @@ int main(int argc, char** argv)
 
 
 	//================== Parse command line arguments ====================//
-	parse_command_line_arguments(argc , argv , &quiet , &seed , &q , &clustering , &weibull_fitness , &initial_copyNumber , &selection_coeff);
-
+	parse_command_line_arguments(argc , argv , &verbose_flag , &seed , &q , &clustering_flag , &weibull_fitness_flag , &initial_copyNumber , &selection_coeff);
 
 
 
@@ -915,13 +938,14 @@ int main(int argc, char** argv)
 	y_b = 10;
 
 	// Initial total sum of all birth rates in system (initial cell with initial_copyNumber ecDNA)
-	r_birth = 1.0 + selection_coeff*fitness(initial_copyNumber , weibull_fitness);
+	r_birth = 1.0 + selection_coeff*fitness(initial_copyNumber , weibull_fitness_flag);
 
 
 	do
 	{
 		
 		++iter;
+
 
 
 		// Re-evaluate birth and death rates
@@ -952,7 +976,7 @@ int main(int argc, char** argv)
 			// Randomly select one cell to divide (all birth rates are equal)
 			if (selection_coeff == 0) select_cell_flat_probability(tissue , &cell_x , &cell_y , radius , x_b , y_b);
 
-			// Choose cell to divide based on its division rate
+			// or, choose cell to divide based on its division rate
 			else select_cell_unequal_birth_rates(tissue , &cell_x , &cell_y , radius);
 
 			// Cell divides
@@ -976,7 +1000,7 @@ int main(int argc, char** argv)
 
 
 
-		if ((!quiet) && (iter%1000 == 0))
+		if ((verbose_flag) && (iter%1000 == 0))
 		{
 			cout << "Iteration #" << iter << " -- N = " << Ntot << endl;
 		}
@@ -988,7 +1012,7 @@ int main(int argc, char** argv)
 
 	} while (Ntot < _maxsize);		// Exit once system has reached total size of _maxsize
 
-	if (!quiet) cout << " " << endl;
+	if (verbose_flag) cout << " " << endl;
 
 
 
@@ -1005,23 +1029,23 @@ int main(int argc, char** argv)
 
 	stringstream f;
 	f.str("");
-	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_clustering=" << boolalpha << clustering << "_copyNumberDependentSelection=" << boolalpha << weibull_fitness << "/seed=" << seed;
+	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_hubs=" << boolalpha << clustering_flag << "_copyNumberDependentSelection=" << boolalpha << weibull_fitness_flag << "/seed=" << seed;
 	DIR *dir = opendir(f.str().c_str());
 	if(!dir)
 	{
 		f.str("");
-		f << "mkdir -p ./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_clustering=" << boolalpha << clustering << "_copyNumberDependentSelection=" << boolalpha << weibull_fitness << "/seed=" << seed;
+		f << "mkdir -p ./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_hubs=" << boolalpha << clustering_flag << "_copyNumberDependentSelection=" << boolalpha << weibull_fitness_flag << "/seed=" << seed;
 		system(f.str().c_str());
 	}
 
 	ofstream tissue_file;
 	f.str("");
-	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_clustering=" << boolalpha << clustering << "_copyNumberDependentSelection=" << boolalpha << weibull_fitness << "/seed=" << seed << "/tissue.csv";
+	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_hubs=" << boolalpha << clustering_flag << "_copyNumberDependentSelection=" << boolalpha << weibull_fitness_flag << "/seed=" << seed << "/tissue.csv";
 	tissue_file.open(f.str().c_str());
 
 
-	if (!quiet) cout << " " << endl;
-	if (!quiet) cout << "Created output files..." << endl;
+	if (verbose_flag) cout << " " << endl;
+	if (verbose_flag) cout << "Created output files..." << endl;
 
 
 

@@ -692,7 +692,7 @@ void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , i
 
 
 	// Checks on input parameter values
-	if (*q < 0)
+	if (*q <= 0)
 	{
 		cout << "Pushing parameter q must be greater than 0. Exiting." << endl;
 		exit(0);

@@ -30,10 +30,10 @@ const int _maxsize = 1e5;
 
 int q, seed;
 
-double radius_double, t, r_birth, r_death, r_birth_normalised, r_death_normalised, rand_double, cell_cell_chord_gradient, cell_cell_chord_yIntercept, min_move_distance, selection_coeff;
+double radius_double, t, r_birth , r_birth_ecDNA_negative , r_birth_ecDNA_positive , r_death, r_birth_normalised , r_birth_ecDNA_negative_normalised , r_birth_ecDNA_positive_normalised , r_death_normalised, rand_double, cell_cell_chord_gradient, cell_cell_chord_yIntercept, min_move_distance, selection_coeff;
 double optimal_direction_i,  optimal_direction_j, optimal_vector_norm, vector_norm, rescaled_min_length, scalar_prod, dist, nearest_space_distance, x_boundary_intersect, y_boundary_intersect;
 double weibull_shape, weibull_scale, birth_rate_sum;
-int radius, Ntot, Nwt, iter, x, y, cell_x, cell_y, dir, queue, ind, length, coordX, coordY, previous_link_direction, chain_length;
+int radius, Ntot, N_ecDNA_hot, iter, x, y, cell_x, cell_y, dir, queue, ind, length, coordX, coordY, previous_link_direction, chain_length;
 int arising_time, x_b, y_b, direction, chosen_direction, min_length, num_mins, chosen_min, doubled_ecDNA_copyNumber, daughter_ecDNA_copyNumber1, daughter_ecDNA_copyNumber2;
 int empty_cell_x, empty_cell_y, search_radius, num_nearest_empty_cells, rand_int, vertical_direction, horizontal_direction, i_lowerBound, j_lowerBound, i_upperBound, j_upperBound;
 int next_move_direction_x, next_move_direction_y, motherCell_copyNumber, clusterSize, initial_copyNumber;
@@ -52,12 +52,12 @@ double previous_moves_distances[(int)_maxsize];
 
 
 
-bool BIRTH = false;
+bool BIRTH_ecDNA_negative = false;
+bool BIRTH_ecDNA_positive = false;
 bool DEATH = false;
 bool skip = false;
 bool verbose_flag = false;
 bool clustering_flag = false;
-bool weibull_fitness_flag = false;
 
 
 
@@ -97,29 +97,18 @@ class Cell
 
 
 
-// Fitness function cells carrying x copies of ecDNA (either flat, or Weibull function with parameters (shape)=1.8; (scale)=40)
-double fitness(int x , bool weibull_fitness_flag)
-{
-	if (weibull_fitness_flag)
-	{
-		weibull_shape = 1.8;
-		weibull_scale = 40.0;
-
-		return 50.0 * (weibull_shape/weibull_scale) * pow((x/weibull_scale) , weibull_shape-1) * exp(-pow((x/weibull_scale) , weibull_shape));
-	}
-
-	else
-	{
-		if (x > 0) return 1;
-		else return 0;
-	}
-}
+// // Fitness function cells carrying x copies of ecDNA (either flat, or Weibull function with parameters (shape)=1.8; (scale)=40)
+// double fitness(int x)
+// {	
+// 	if (x > 0) return 1;
+// 	else return 0;
+// }
 
 
 
 
 // Straight line pushing 
-void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot , int *x_b , int *y_b , double *r_birth , int radius)
+void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot , int *N_ecDNA_hot , int *x_b , int *y_b , double *r_birth , int radius)
 {
 
 	//cout << "\nCell at (x , y) = (" << cell_x << " , " << cell_y << ") wants to divide." << endl;
@@ -539,11 +528,7 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 		tissue[chainX[0]][chainY[0]].set_ecDNA(daughter_ecDNA_copyNumber2);
 
 
-		// Update total sum of birth rates in the system after cell division
-		*r_birth -= (1.0 + selection_coeff*fitness(int(0.5*doubled_ecDNA_copyNumber) , weibull_fitness_flag));		// Subtract contribution from mother cell
-		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber1 , weibull_fitness_flag));		// Add contribution from daughter cell 1
-		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber2 , weibull_fitness_flag));		// Add contribution from daughter cell 2
-
+		if ((daughter_ecDNA_copyNumber1 > 0) && (daughter_ecDNA_copyNumber2 > 0)) *N_ecDNA_hot += 1;
 	}
 
 
@@ -580,13 +565,6 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
   		// Create daughter cell
 		tissue[cell_x][cell_y].set_ecDNA(daughter_ecDNA_copyNumber1);
 		tissue[chainX[0]][chainY[0]].set_ecDNA(daughter_ecDNA_copyNumber2);
-
-
-		// Update total sum of birth rates in the system after cell division
-		*r_birth -= (1.0 + selection_coeff*fitness(int(0.5*doubled_ecDNA_copyNumber) , weibull_fitness_flag));		// Subtract contribution from mother cell
-		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber1 , weibull_fitness_flag));		// Add contribution from daughter cell 1
-		*r_birth += (1.0 + selection_coeff*fitness(daughter_ecDNA_copyNumber2 , weibull_fitness_flag));		// Add contribution from daughter cell 2
-
 	}
 
 
@@ -607,21 +585,19 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 
 
 // Parse command line arguments (Flags and numerical arguments)
-void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , int *seed , int *q , bool *clustering_flag , bool *weibull_fitness_flag , int *initial_copyNumber , double *selection_coeff)
+void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , int *seed , int *q , bool *clustering_flag , int *initial_copyNumber , double *selection_coeff)
 {
 	int c;
 	int option_index;
 	char* arg_long = nullptr;
 	int verbose = 0;
 	int clustering = 0;
-	int weibull_fitness = 0;
 
 	static struct option long_options[] =
         {
         	// These options set a flag.
 		{"verbose", no_argument, &verbose, 1},
 		{"hubs", no_argument, &clustering, 1},
-		{"copyNumberDependentSelection", no_argument, &weibull_fitness, 1}
         }; 
 
 	while ((c = getopt_long(argc, argv, "x:q:n:s:", long_options, &option_index)) != -1)
@@ -633,11 +609,6 @@ void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , i
 			break;
 		}
 
-		// // Verbose flag
-		// case 'v':
-		// 	*quiet = false;
-		// 	break;
-
 		// Random seed
 		case 'x':
 			*seed = atoi(optarg);		
@@ -647,15 +618,6 @@ void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , i
 		case 'q':
 			*q = atoi(optarg);		
 			break;
-
-		// // Clustering parameter (C=0 for no ecDNA clustering, C=1 for clustering)
-		// case 'C':
-		// 	*clustering = true;
-		// 	break;
-
-		// case 'F':
-		// 	*weibull_fitness = true;
-		// 	break;
 
 		// ecDNA copy number in initial cell
 		case 'n':
@@ -687,7 +649,6 @@ void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , i
 	// Set boolean values for flags 
 	if (verbose == 1) *verbose_flag = true;
 	if (clustering == 1) *clustering_flag = true;
-	if (weibull_fitness == 1) *weibull_fitness_flag = true;
 
 
 
@@ -711,7 +672,7 @@ void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , i
 
 
 // Set up tissue (i.e. array of cells)
-Cell** initialise_tissue(int _maxsize , int *Ntot , int initial_copyNumber)
+Cell** initialise_tissue(int _maxsize , int *Ntot , int *N_ecDNA_hot , int initial_copyNumber)
 {
 	// Estimate radius of final system based on _maxsize
 	radius_double = pow ( (_maxsize/M_PI) , (1.0/2.0) );
@@ -749,6 +710,7 @@ Cell** initialise_tissue(int _maxsize , int *Ntot , int initial_copyNumber)
 	tissue[radius][radius].set_ecDNA(initial_copyNumber);
 
 	*Ntot += 1;
+	*N_ecDNA_hot += 1;
 
 	return tissue;
 }
@@ -758,13 +720,17 @@ Cell** initialise_tissue(int _maxsize , int *Ntot , int initial_copyNumber)
 
 
 // Compute normalised birth and death rates 
-void compute_normalised_birth_and_death_rates(int Ntot , double r_birth , double *r_birth_normalised , double *r_death_normalised)
+void compute_normalised_birth_and_death_rates(int Ntot , int N_ecDNA_hot , double *r_birth_ecDNA_negative_normalised , double *r_birth_ecDNA_positive_normalised , double *r_death_normalised)
 {
+	// Compute un-normalised reaction rates
 	r_death = 0.5*Ntot;
+	r_birth_ecDNA_negative = (double)(Ntot - N_ecDNA_hot) * (1.0);
+	r_birth_ecDNA_positive = (double)(N_ecDNA_hot) * (1.0 + selection_coeff);
 
 	// Compute normalised reaction rates
-	*r_birth_normalised = r_birth/(r_birth + r_death);
-	*r_death_normalised = r_death/(r_birth + r_death);
+	*r_birth_ecDNA_negative_normalised = r_birth_ecDNA_negative/(r_birth_ecDNA_negative + r_birth_ecDNA_positive + r_death);
+	*r_birth_ecDNA_positive_normalised = r_birth_ecDNA_positive/(r_birth_ecDNA_negative + r_birth_ecDNA_positive + r_death);
+	*r_death_normalised = r_death/(r_birth_ecDNA_negative + r_birth_ecDNA_positive + r_death);
 }
 
 
@@ -773,18 +739,24 @@ void compute_normalised_birth_and_death_rates(int Ntot , double r_birth , double
 
 
 // Choose next event in Gillespie algorithm
-void choose_next_event(bool *BIRTH , bool *DEATH , double r_birth_normalised , double r_death_normalised)
+void choose_next_event(bool *BIRTH_ecDNA_negative , bool *BIRTH_ecDNA_positive , bool *DEATH , double r_birth_ecDNA_negative_normalised , double r_birth_ecDNA_positive_normalised , double r_death_normalised)
 {
-	*BIRTH = false;
+	*BIRTH_ecDNA_negative = false;
+	*BIRTH_ecDNA_positive = false;
 	*DEATH = false;
 
 	rand_double = drand48();
-	if (rand_double <= r_birth_normalised)
+	if (rand_double <= r_birth_ecDNA_negative_normalised)
 	{
-		*BIRTH = true;
-		//cout << "BIRTH" << endl;
+		*BIRTH_ecDNA_negative = true;
+		//cout << "BIRTH (ecDNA-)" << endl;
 	}
-	else if (rand_double <= r_birth_normalised + r_death_normalised)
+	else if (rand_double <= r_birth_ecDNA_negative_normalised + r_birth_ecDNA_positive_normalised)
+	{
+		*BIRTH_ecDNA_positive = true;
+		//cout << "BIRTH (ecDNA+)" << endl;
+	}
+	else if (rand_double <= r_birth_ecDNA_negative_normalised + r_birth_ecDNA_positive_normalised + r_death_normalised)
 	{
 		*DEATH = true;
 		//cout << "DEATH" << endl;
@@ -821,37 +793,37 @@ void select_cell_flat_probability(Cell ** tissue , int *cell_x , int *cell_y , i
 
 
 
-// Select cell in tissue when cells have different birth rates
-void select_cell_unequal_birth_rates(Cell ** tissue , int *cell_x , int *cell_y , int radius)
-{
-	// Choose cell to divide based on its division rate
-	birth_rate_sum = 0.0;
-	*cell_x = -1;
-	*cell_y = -1;
-	rand_double = drand48();
+// // Select cell in tissue when cells have different birth rates
+// void select_cell_unequal_birth_rates(Cell ** tissue , int *cell_x , int *cell_y , int radius)
+// {
+// 	// Choose cell to divide based on its division rate
+// 	birth_rate_sum = 0.0;
+// 	*cell_x = -1;
+// 	*cell_y = -1;
+// 	rand_double = drand48();
 
-	// Loop over all cells in system
-	for (int i = 0; i < (2*radius); i++)
-	{
-		for (int j = 0; j < (2*radius); j++)
-		{
-			if (tissue[i][j].ecDNA == -1) continue; 
+// 	// Loop over all cells in system
+// 	for (int i = 0; i < (2*radius); i++)
+// 	{
+// 		for (int j = 0; j < (2*radius); j++)
+// 		{
+// 			if (tissue[i][j].ecDNA == -1) continue; 
 
-			// Add contribution of cell
-			birth_rate_sum += (1.0 + selection_coeff*fitness(tissue[i][j].ecDNA , weibull_fitness_flag));
-			//cout << "Birth rate sum = " << birth_rate_sum << endl;
+// 			// Add contribution of cell
+// 			birth_rate_sum += (1.0 + selection_coeff*fitness(tissue[i][j].ecDNA));
+// 			//cout << "Birth rate sum = " << birth_rate_sum << endl;
 
-			//cout << "Checking if " << rand_double << " < " << birth_rate_sum/r_birth << endl;
-			if (rand_double <= birth_rate_sum/r_birth)
-			{
-				*cell_x = i;
-				*cell_y = j;
-				break;
-			}
-		}
-		if ((*cell_x != -1) && (*cell_y != -1)) break;
-	}
-}
+// 			//cout << "Checking if " << rand_double << " < " << birth_rate_sum/r_birth << endl;
+// 			if (rand_double <= birth_rate_sum/r_birth)
+// 			{
+// 				*cell_x = i;
+// 				*cell_y = j;
+// 				break;
+// 			}
+// 		}
+// 		if ((*cell_x != -1) && (*cell_y != -1)) break;
+// 	}
+// }
 
 
 
@@ -859,15 +831,16 @@ void select_cell_unequal_birth_rates(Cell ** tissue , int *cell_x , int *cell_y 
 
 
 // Kill cell and remove from lattice
-void kill_cell(Cell ** tissue , double *r_birth , int cell_x , int cell_y , double selection_coeff , int *Ntot)
+void kill_cell(Cell ** tissue , int cell_x , int cell_y , double selection_coeff , int *Ntot , int *N_ecDNA_hot)
 {
-	// Subtract contribution of cell to r_birth
-	*r_birth -= (1.0 + selection_coeff*fitness(tissue[cell_x][cell_y].ecDNA , weibull_fitness_flag))
-	;
+
+	if (tissue[cell_x][cell_y].ecDNA > 0) *N_ecDNA_hot -= 1;
 
 	// Cell dies
 	tissue[cell_x][cell_y].set_ecDNA(-1);
 	*Ntot -= 1;
+
+
 }
 
 
@@ -906,12 +879,13 @@ int main(int argc, char** argv)
 	// Reset time and tissue size variables
 	t = 0.0;
 	Ntot = 0;
+	N_ecDNA_hot = 0;
 	selection_coeff = 0.0;
 	q = 0;
 
 
 	//================== Parse command line arguments ====================//
-	parse_command_line_arguments(argc , argv , &verbose_flag , &seed , &q , &clustering_flag , &weibull_fitness_flag , &initial_copyNumber , &selection_coeff);
+	parse_command_line_arguments(argc , argv , &verbose_flag , &seed , &q , &clustering_flag , &initial_copyNumber , &selection_coeff);
 
 
 
@@ -924,7 +898,7 @@ int main(int argc, char** argv)
 
 
 	//================== Initialise tissue ====================//
-	Cell ** tissue = initialise_tissue(_maxsize , &Ntot , initial_copyNumber);
+	Cell ** tissue = initialise_tissue(_maxsize , &Ntot , &N_ecDNA_hot , initial_copyNumber);
 
 
 
@@ -937,9 +911,6 @@ int main(int argc, char** argv)
 	x_b = 10;
 	y_b = 10;
 
-	// Initial total sum of all birth rates in system (initial cell with initial_copyNumber ecDNA)
-	r_birth = 1.0 + selection_coeff*fitness(initial_copyNumber , weibull_fitness_flag);
-
 
 	do
 	{
@@ -949,7 +920,7 @@ int main(int argc, char** argv)
 
 
 		// Re-evaluate birth and death rates
-		compute_normalised_birth_and_death_rates(Ntot , r_birth , &r_birth_normalised , &r_death_normalised);
+		compute_normalised_birth_and_death_rates(Ntot , N_ecDNA_hot , &r_birth_ecDNA_negative_normalised , &r_birth_ecDNA_positive_normalised , &r_death_normalised);
 
 
 
@@ -964,23 +935,40 @@ int main(int argc, char** argv)
 
 
 		// Choose birth or death based on normalised rates
-		choose_next_event(&BIRTH , &DEATH , r_birth_normalised , r_death_normalised);
+		choose_next_event(&BIRTH_ecDNA_negative , &BIRTH_ecDNA_positive , &DEATH , r_birth_ecDNA_negative_normalised , r_birth_ecDNA_positive_normalised , r_death_normalised);
 
 
 
 
 
 		// If division:
-		if (BIRTH)
+		if (BIRTH_ecDNA_negative)
 		{
 			// Randomly select one cell to divide (all birth rates are equal)
-			if (selection_coeff == 0) select_cell_flat_probability(tissue , &cell_x , &cell_y , radius , x_b , y_b);
-
-			// or, choose cell to divide based on its division rate
-			else select_cell_unequal_birth_rates(tissue , &cell_x , &cell_y , radius);
+			while (true)
+			{
+				select_cell_flat_probability(tissue , &cell_x , &cell_y , radius , x_b , y_b);
+				if ((tissue[cell_x][cell_y].ecDNA == 0) && (drand48() <= (double)(Ntot-N_ecDNA_hot)/(double)(Ntot))) break;
+			}
 
 			// Cell divides
-			straight_line_division(tissue , cell_x , cell_y , &Ntot , &x_b , &y_b , &r_birth , radius);
+			straight_line_division(tissue , cell_x , cell_y , &Ntot , &N_ecDNA_hot , &x_b , &y_b , &r_birth , radius);
+		}
+
+
+
+
+		if (BIRTH_ecDNA_positive)
+		{
+			// Randomly select one cell to divide (all birth rates are equal)
+			while (true)
+			{
+				select_cell_flat_probability(tissue , &cell_x , &cell_y , radius , x_b , y_b);
+				if ((tissue[cell_x][cell_y].ecDNA > 0) && (drand48() <= (double)(N_ecDNA_hot)/(double)(Ntot))) break;
+			}
+
+			// Cell divides
+			straight_line_division(tissue , cell_x , cell_y , &Ntot , &N_ecDNA_hot , &x_b , &y_b , &r_birth , radius);
 		}
 
 
@@ -994,7 +982,7 @@ int main(int argc, char** argv)
 			select_cell_flat_probability(tissue , &cell_x , &cell_y , radius , x_b , y_b);
 
 			// Cell dies
-			kill_cell(tissue , &r_birth , cell_x , cell_y , selection_coeff , &Ntot);
+			kill_cell(tissue , cell_x , cell_y , selection_coeff , &Ntot , &N_ecDNA_hot);
 		}
 
 
@@ -1002,7 +990,7 @@ int main(int argc, char** argv)
 
 		if ((verbose_flag) && (iter%1000 == 0))
 		{
-			cout << "Iteration #" << iter << " -- N = " << Ntot << endl;
+			cout << "Iteration #" << iter << " -- N = " << Ntot << " -- N_ecDNA_hot = " << N_ecDNA_hot << endl;
 		}
 
 
@@ -1029,18 +1017,18 @@ int main(int argc, char** argv)
 
 	stringstream f;
 	f.str("");
-	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_hubs=" << boolalpha << clustering_flag << "_copyNumberDependentSelection=" << boolalpha << weibull_fitness_flag << "/seed=" << seed;
+	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_hubs=" << boolalpha << clustering_flag << "/seed=" << seed;
 	DIR *dir = opendir(f.str().c_str());
 	if(!dir)
 	{
 		f.str("");
-		f << "mkdir -p ./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_hubs=" << boolalpha << clustering_flag << "_copyNumberDependentSelection=" << boolalpha << weibull_fitness_flag << "/seed=" << seed;
+		f << "mkdir -p ./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_hubs=" << boolalpha << clustering_flag << "/seed=" << seed;
 		system(f.str().c_str());
 	}
 
 	ofstream tissue_file;
 	f.str("");
-	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_hubs=" << boolalpha << clustering_flag << "_copyNumberDependentSelection=" << boolalpha << weibull_fitness_flag << "/seed=" << seed << "/tissue.csv";
+	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_hubs=" << boolalpha << clustering_flag << "/seed=" << seed << "/tissue.csv";
 	tissue_file.open(f.str().c_str());
 
 

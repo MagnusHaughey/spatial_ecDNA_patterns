@@ -517,10 +517,18 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 	if (clustering_flag == false)	// No ecDNA clustering
 	{	
 		// Distribute ecDNA between two daughter cells according to binomial
-		binomial_distribution<int> draw_new_ecDNA_copyNumber(doubled_ecDNA_copyNumber , 0.5);
-		daughter_ecDNA_copyNumber1 = draw_new_ecDNA_copyNumber(generator);
-		daughter_ecDNA_copyNumber2 = doubled_ecDNA_copyNumber - daughter_ecDNA_copyNumber1;
-		//cout << "Daugher cells receive " << daughter_ecDNA_copyNumber1 << " and " << daughter_ecDNA_copyNumber2 << " ecDNA\n" << endl;
+                //binomial_distribution<int> draw_new_ecDNA_copyNumber(doubled_ecDNA_copyNumber , 0.5);
+                //daughter_ecDNA_copyNumber1 = draw_new_ecDNA_copyNumber(generator);
+                //daughter_ecDNA_copyNumber2 = doubled_ecDNA_copyNumber - daughter_ecDNA_copyNumber1;
+
+                // Distribute ecDNA between two daughter cells according to binomial
+                // Model each Bernoulli trial individually using drand48(), as having trouble with portability issues using the binomial_distribution object from <random>
+                daughter_ecDNA_copyNumber1 = 0;
+                for (int i = 0; i < doubled_ecDNA_copyNumber; ++i)
+                {
+                        if (drand48() <= 0.5) daughter_ecDNA_copyNumber1 += 1;
+                }
+                daughter_ecDNA_copyNumber2 = doubled_ecDNA_copyNumber - daughter_ecDNA_copyNumber1;
 
 
 		// Create daughter cell

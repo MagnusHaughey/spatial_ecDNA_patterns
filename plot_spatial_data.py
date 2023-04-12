@@ -144,7 +144,8 @@ else:
 
 
 	# Set up colour map
-	plasma = cm.get_cmap('hsv_r', 256)
+	#plasma = cm.get_cmap('hsv_r', 256)
+	plasma = mpl.colormaps['hsv_r']
 	#newcolors = plasma(np.linspace(0.5, 1, 256))
 	newcolors = plasma([np.sqrt(val) for val in np.linspace(0.65, 1, 256)])
 	transparent = np.array([1, 1, 1, 0])

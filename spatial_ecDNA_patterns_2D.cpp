@@ -65,9 +65,6 @@ bool clustering_flag = false;
 
 
 
-// Define poisson distributions
-default_random_engine generator;
-
 // Declare Poisson distribution
 poisson_distribution<int> ecDNA_clusterSizeDistribution(2.0);
 
@@ -108,7 +105,7 @@ class Cell
 
 
 // Straight line pushing 
-void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot , int *N_ecDNA_hot , int *x_b , int *y_b , double *r_birth , int radius)
+void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot , int *N_ecDNA_hot , int *x_b , int *y_b , double *r_birth , int radius , mt19937_64 *generator)
 {
 
 	//cout << "\nCell at (x , y) = (" << cell_x << " , " << cell_y << ") wants to divide." << endl;
@@ -517,17 +514,8 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 	if (clustering_flag == false)	// No ecDNA clustering
 	{	
 		// Distribute ecDNA between two daughter cells according to binomial
-                //binomial_distribution<int> draw_new_ecDNA_copyNumber(doubled_ecDNA_copyNumber , 0.5);
-                //daughter_ecDNA_copyNumber1 = draw_new_ecDNA_copyNumber(generator);
-                //daughter_ecDNA_copyNumber2 = doubled_ecDNA_copyNumber - daughter_ecDNA_copyNumber1;
-
-                // Distribute ecDNA between two daughter cells according to binomial
-                // Model each Bernoulli trial individually using drand48(), as having trouble with portability issues using the binomial_distribution object from <random>
-                daughter_ecDNA_copyNumber1 = 0;
-                for (int i = 0; i < doubled_ecDNA_copyNumber; ++i)
-                {
-                        if (drand48() <= 0.5) daughter_ecDNA_copyNumber1 += 1;
-                }
+                binomial_distribution<int> draw_new_ecDNA_copyNumber(doubled_ecDNA_copyNumber , 0.5);
+                daughter_ecDNA_copyNumber1 = draw_new_ecDNA_copyNumber(*generator);
                 daughter_ecDNA_copyNumber2 = doubled_ecDNA_copyNumber - daughter_ecDNA_copyNumber1;
 
 
@@ -552,7 +540,7 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
   		while(motherCell_copyNumber > 0)
   		{
   			// Draw cluster size from Poisson distribution
-  			clusterSize = ecDNA_clusterSizeDistribution(generator);
+  			clusterSize = ecDNA_clusterSizeDistribution(*generator);
   			
   			// Skip if cluster size is larger than available remaining ecDNA in mother cell
   			if (clusterSize > motherCell_copyNumber) continue;
@@ -899,7 +887,9 @@ int main(int argc, char** argv)
 
 	// Seed random number generator
 	srand48(seed);
-        default_random_engine generator(seed);
+        //default_random_engine generator(seed);
+        mt19937_64 generator;
+        generator.seed(seed);
 
 
 
@@ -960,7 +950,7 @@ int main(int argc, char** argv)
 			}
 
 			// Cell divides
-			straight_line_division(tissue , cell_x , cell_y , &Ntot , &N_ecDNA_hot , &x_b , &y_b , &r_birth , radius);
+			straight_line_division(tissue , cell_x , cell_y , &Ntot , &N_ecDNA_hot , &x_b , &y_b , &r_birth , radius , &generator);
 		}
 
 
@@ -976,7 +966,7 @@ int main(int argc, char** argv)
 			}
 
 			// Cell divides
-			straight_line_division(tissue , cell_x , cell_y , &Ntot , &N_ecDNA_hot , &x_b , &y_b , &r_birth , radius);
+			straight_line_division(tissue , cell_x , cell_y , &Ntot , &N_ecDNA_hot , &x_b , &y_b , &r_birth , radius , &generator);
 		}
 
 

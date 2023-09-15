@@ -11,6 +11,8 @@
 # include <dirent.h>
 # include <string>
 # include <getopt.h>
+# include <algorithm>
+# include <initializer_list>
 
 
 
@@ -23,7 +25,9 @@ using namespace std;
 
 
 // Define global variables
-const int _maxsize = 1e5;
+const int _maxsize = 1e6;
+
+#define PI 3.14159265
 
 // Next-nearest-neighbour neighbourhood -> 8 neighbours 
 //const int NEIGHBOURHOOD = 8;
@@ -41,14 +45,14 @@ int next_move_direction_x, next_move_direction_y, motherCell_copyNumber, cluster
 
 
 // Define arrays which will contain relative coordinates of empty neighbours for a chosen cell 
-int chainX[(int)_maxsize];
-int chainY[(int)_maxsize];
-int moves_direction_x[(int)_maxsize];
-int moves_direction_y[(int)_maxsize];
-double moves_distances[(int)_maxsize];
-int previous_moves_direction_x[(int)_maxsize];
-int previous_moves_direction_y[(int)_maxsize];
-double previous_moves_distances[(int)_maxsize];
+int chainX[1001];
+int chainY[1001];
+int moves_direction_x[1001];
+int moves_direction_y[1001];
+double moves_distances[1001];
+int previous_moves_direction_x[1001];
+int previous_moves_direction_y[1001];
+double previous_moves_distances[1001];
 
 
 
@@ -58,6 +62,9 @@ bool DEATH = false;
 bool skip = false;
 bool verbose_flag = false;
 bool clustering_flag = false;
+bool stop_searching = false;
+
+double search_radius_constant = cos(PI/8)*0.765375;
 
 
 
@@ -114,57 +121,304 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 	empty_cell_x = -1;
 	empty_cell_y = -1;
 	nearest_space_distance = 1e10;
-	num_nearest_empty_cells = 1;
-	search_radius = 0;
+	num_nearest_empty_cells = 0;
+	//search_radius = 0;
+	stop_searching = false;
 
-	do
+
+	int search_radius_incrememnt = ceil(q/50.0);
+	search_radius = 1 - search_radius_incrememnt;
+
+	// Make sure we don't look off the edges of the array (this is necessary for very large increment sizes e.g. 500)
+	// Need to find the nearest 'edge' of the tissue array for the given moether cell co-ordinates
+	int minimum_edge_distance = std::min({cell_x, (2*radius)-cell_x, cell_y, (2*radius)-cell_y});
+
+
+
+
+	//do
+	while (true)
 	{
-		search_radius += 1;
+		//search_radius += 1;
+		//cout << "Searching cells within radius of " << search_radius << endl;
+		//if (search_radius > q) return;
+
+		// if (search_radius == 1)
+		// {
+
+		// Make sure we don't look further than the max value, q, or off the edges of the array (this is necessary for very large increment sizes e.g. 500)
+		if (search_radius + search_radius_incrememnt >= minimum_edge_distance)
+		{
+			search_radius_incrememnt = minimum_edge_distance - 2;
+			//cout << "(cell_x , cell_y) = (" << cell_x << " , " << cell_y << ") | min edge distance = " << minimum_edge_distance << endl;
+			//cout << "Updated search radius increment (1). Searching between (x1, x2)=(" << cell_x-(search_radius + search_radius_incrememnt) << ", " << cell_x+(search_radius + search_radius_incrememnt) << ") | (y1, y2)=(" << cell_y-(search_radius + search_radius_incrememnt) << ", " << cell_y+(search_radius + search_radius_incrememnt) << ")" << endl;
+			stop_searching = true;
+		}
+		if (search_radius + search_radius_incrememnt > q)
+		{
+			search_radius_incrememnt = q - search_radius;
+			//cout << "Updated search radius increment (2)" << endl;
+			stop_searching = true;
+		}
+
+
+		search_radius += search_radius_incrememnt;
+
 		//cout << "Searching cells within radius of " << search_radius << endl;
 
-		if (search_radius > q) return;
-
-		for (int i = -search_radius; i <= search_radius; ++i)
-		{
-			for (int j = -search_radius; j <= search_radius; ++j)
+			for (int i = -search_radius; i <= search_radius; ++i)
 			{
 
-				//if ((i == 0) && (j == 0)) continue;
-
-				// Compute distance 
-				dist = (i*i) + (j*j);
-
-				// Only check cells within distance search_radius of dividing cell
-				if (dist > float(search_radius*search_radius)) continue;
-
-				//cout << "Checking cell status at (x,y) = (" << cell_x + i << " , " << cell_y + j << ") -> " << tissue[cell_x + i][cell_y + j].ecDNA << endl;
-
-				// Check if lattice coordinates are occupied or empty
-				if (tissue[cell_x + i][cell_y + j].ecDNA == -1)
+				for (int j = -search_radius; j <= search_radius; ++j)
 				{
 
-					//cout << i << " " << j << endl;
 
-					if (dist < nearest_space_distance)
+					//if ((i == 0) && (j == 0)) continue;
+
+					// Compute distance 
+					dist = (i*i) + (j*j);
+
+					// Only check cells within distance search_radius of dividing cell
+					if (dist > float(search_radius*search_radius)) continue;
+
+					//if (iter > 85000) cout << "Checking cell status at (x,y) = (" << cell_x + i << " , " << cell_y + j << ")" << endl;
+					//cout << "Checking cell status at (x,y) = (" << cell_x + i << " , " << cell_y + j << ") -> " << tissue[cell_x + i][cell_y + j].ecDNA << endl;
+
+					// Check if lattice coordinates are occupied or empty
+					if (tissue[cell_x + i][cell_y + j].ecDNA == -1)
 					{
-						nearest_space_distance = dist;
-						empty_cell_x = cell_x + i;
-						empty_cell_y = cell_y + j;
 
-						num_nearest_empty_cells = 1;
-					}
+						//cout << i << " " << j << endl;
 
-					else if (dist == nearest_space_distance) 
-					{
-						++num_nearest_empty_cells;
+						if (dist < nearest_space_distance)
+						{
+							//cout << "Updated nearest empty space! (0)" << endl;
+							nearest_space_distance = dist;
+							empty_cell_x = cell_x + i;
+							empty_cell_y = cell_y + j;
+
+							num_nearest_empty_cells = 1;
+						}
+
+						else if (dist == nearest_space_distance) 
+						{
+							//cout << "Found equally close empty cell at (x,y)=(" << i << "," << j << ")" << endl;
+							++num_nearest_empty_cells;
+						}
 					}
 				}
 			}
-		}
+		// }
+
+		// else
+		// {
+
+		// 	//cout << "Search radius = " << search_radius << " | inner radius (floor) = " << floor(search_radius_constant*search_radius) << " | inner radius (ceil) = " << ceil(search_radius_constant*search_radius) << endl;
+
+		// 	//cout << "Loop 1" << endl;
+		// 	for (int i = -search_radius; i <= -floor(search_radius_constant*search_radius); ++i)
+		// 	{
+		// 		for (int j = -search_radius; j <= search_radius; ++j)
+		// 		{
+
+		// 			//cout << "Searching i=" << i << ", j=" << j << endl;
+
+		// 			//if ((i == 0) && (j == 0)) continue;
+
+		// 			//cout << "Checking cell status at (x,y) = (" << cell_x + i << " , " << cell_y + j << ") -> " << tissue[cell_x + i][cell_y + j].ecDNA << endl;
+
+		// 			// Check if lattice coordinates are occupied or empty
+		// 			if (tissue[cell_x + i][cell_y + j].ecDNA == -1)
+		// 			{
+
+		// 				// Compute distance 
+		// 				dist = (i*i) + (j*j);
+
+		// 				// Only check cells within distance search_radius of dividing cell
+		// 				if (dist > float(search_radius*search_radius)) continue;
+
+		// 				//cout << i << " " << j << endl;
+
+		// 				if (dist < nearest_space_distance)
+		// 				{
+		// 					//cout << "Updated nearest empty space! (1)" << endl;
+		// 					nearest_space_distance = dist;
+		// 					empty_cell_x = cell_x + i;
+		// 					empty_cell_y = cell_y + j;
+
+		// 					num_nearest_empty_cells = 1;
+		// 				}
+
+		// 				else if (dist == nearest_space_distance) 
+		// 				{
+		// 					//cout << "Found equally close empty cell at (x,y)=(" << i << "," << j << ")" << endl;
+		// 					++num_nearest_empty_cells;
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+
+
+
+
+		// 	//--------------------------------------
+
+
+
+		// 	//cout << "Loop 2" << endl;
+		// 	for (int i = floor(search_radius_constant*search_radius); i <= search_radius; ++i)
+		// 	{
+		// 		for (int j = -search_radius; j <= search_radius; ++j)
+		// 		{
+
+		// 			//cout << "Searching i=" << i << ", j=" << j << endl;
+
+		// 			//if ((i == 0) && (j == 0)) continue;
+
+		// 			//cout << "Checking cell status at (x,y) = (" << cell_x + i << " , " << cell_y + j << ") -> " << tissue[cell_x + i][cell_y + j].ecDNA << endl;
+
+		// 			// Check if lattice coordinates are occupied or empty
+		// 			if (tissue[cell_x + i][cell_y + j].ecDNA == -1)
+		// 			{
+
+		// 				// Compute distance 
+		// 				dist = (i*i) + (j*j);
+
+		// 				// Only check cells within distance search_radius of dividing cell
+		// 				if (dist > float(search_radius*search_radius)) continue;
+
+
+		// 				//cout << i << " " << j << endl;
+
+		// 				if (dist < nearest_space_distance)
+		// 				{
+		// 					//cout << "Updated nearest empty space! (2)" << endl;
+		// 					nearest_space_distance = dist;
+		// 					empty_cell_x = cell_x + i;
+		// 					empty_cell_y = cell_y + j;
+
+		// 					num_nearest_empty_cells = 1;
+		// 				}
+
+		// 				else if (dist == nearest_space_distance) 
+		// 				{
+		// 					//cout << "Found equally close empty cell at (x,y)=(" << i << "," << j << ")" << endl;
+		// 					++num_nearest_empty_cells;
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+
+
+
+
+		// 	//--------------------------------------
+
+
+
+		// 	//cout << "Loop 3" << endl;
+		// 	for (int i = -floor(search_radius_constant*search_radius)+1; i <= floor(search_radius_constant*search_radius)-1; ++i)
+		// 	{
+		// 		for (int j = -search_radius; j <= -floor(search_radius_constant*search_radius); ++j)
+		// 		{
+
+		// 			//cout << "Searching i=" << i << ", j=" << j << endl;
+
+		// 			//if ((i == 0) && (j == 0)) continue;
+
+
+		// 			//cout << "Checking cell status at (x,y) = (" << cell_x + i << " , " << cell_y + j << ") -> " << tissue[cell_x + i][cell_y + j].ecDNA << endl;
+
+		// 			// Check if lattice coordinates are occupied or empty
+		// 			if (tissue[cell_x + i][cell_y + j].ecDNA == -1)
+		// 			{
+
+		// 				// Compute distance 
+		// 				dist = (i*i) + (j*j);
+
+		// 				// Only check cells within distance search_radius of dividing cell
+		// 				if (dist > float(search_radius*search_radius)) continue;
+
+
+		// 				//cout << i << " " << j << endl;
+
+		// 				if (dist < nearest_space_distance)
+		// 				{
+		// 					//cout << "Updated nearest empty space! (3)" << endl;
+		// 					nearest_space_distance = dist;
+		// 					empty_cell_x = cell_x + i;
+		// 					empty_cell_y = cell_y + j;
+
+		// 					num_nearest_empty_cells = 1;
+		// 				}
+
+		// 				else if (dist == nearest_space_distance) 
+		// 				{
+		// 					//cout << "Found equally close empty cell at (x,y)=(" << i << "," << j << ")" << endl;
+		// 					++num_nearest_empty_cells;
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+
+
+
+
+		// 	//--------------------------------------
+
+
+
+		// 	//cout << "Loop 4" << endl;
+		// 	for (int i = -floor(search_radius_constant*search_radius)+1; i <= floor(search_radius_constant*search_radius)-1; ++i)
+		// 	{
+		// 		for (int j = floor(search_radius_constant*search_radius); j <= search_radius; ++j)
+		// 		{
+
+
+		// 			//cout << "Searching i=" << i << ", j=" << j << endl;
+
+		// 			//cout << "Checking cell status at (x,y) = (" << cell_x + i << " , " << cell_y + j << ") -> " << tissue[cell_x + i][cell_y + j].ecDNA << endl;
+
+		// 			// Check if lattice coordinates are occupied or empty
+		// 			if (tissue[cell_x + i][cell_y + j].ecDNA == -1)
+		// 			{
+
+		// 				// Compute distance 
+		// 				dist = (i*i) + (j*j);
+
+		// 				// Only check cells within distance search_radius of dividing cell
+		// 				if (dist > float(search_radius*search_radius)) continue;
+
+
+		// 				//cout << i << " " << j << endl;
+		// 				if (dist < nearest_space_distance)
+		// 				{
+		// 					//cout << "Updated nearest empty space! (4)" << endl;
+		// 					nearest_space_distance = dist;
+		// 					empty_cell_x = cell_x + i;
+		// 					empty_cell_y = cell_y + j;
+
+		// 					num_nearest_empty_cells = 1;
+		// 				}
+
+		// 				else if (dist == nearest_space_distance) 
+		// 				{
+		// 					//cout << "Found equally close empty cell at (x,y)=(" << i << "," << j << ")" << endl;
+		// 					++num_nearest_empty_cells;
+		// 				}
+		// 			}
+		// 		}
+		// 	}
+		// }
+
+
+		if ((stop_searching == true) || ((empty_cell_x != -1) && (empty_cell_y != -1))) break;
+
 	}
-	while((empty_cell_x == -1) && (empty_cell_y == -1));
+	//while((empty_cell_x == -1) && (empty_cell_y == -1));
 
 
+	if ((empty_cell_x == -1) && (empty_cell_y == -1)) return;
 
 
 
@@ -175,6 +429,8 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 	// If there is more than 1 empty cell at the nearest distance to the dividing cell, choose one with uniform probability
 	if (num_nearest_empty_cells > 1)
 	{
+
+		//cout << "Found multiple closest empty spaces (" << num_nearest_empty_cells <<")" << endl;
 
 
 		// Create vector of co-ordinates to nearest empty lattice points 
@@ -916,7 +1172,6 @@ int main(int argc, char** argv)
 		++iter;
 
 
-
 		// Re-evaluate birth and death rates
 		compute_normalised_birth_and_death_rates(Ntot , N_ecDNA_hot , &r_birth_ecDNA_negative_normalised , &r_birth_ecDNA_positive_normalised , &r_death_normalised);
 
@@ -946,7 +1201,8 @@ int main(int argc, char** argv)
 			while (true)
 			{
 				select_cell_flat_probability(tissue , &cell_x , &cell_y , radius , x_b , y_b);
-				if ((tissue[cell_x][cell_y].ecDNA == 0) && (drand48() <= (double)(Ntot-N_ecDNA_hot)/(double)(Ntot))) break;
+				//if ((tissue[cell_x][cell_y].ecDNA == 0) && (drand48() <= (double)(Ntot-N_ecDNA_hot)/(double)(Ntot))) break;
+				if (tissue[cell_x][cell_y].ecDNA == 0) break;
 			}
 
 			// Cell divides
@@ -962,7 +1218,8 @@ int main(int argc, char** argv)
 			while (true)
 			{
 				select_cell_flat_probability(tissue , &cell_x , &cell_y , radius , x_b , y_b);
-				if ((tissue[cell_x][cell_y].ecDNA > 0) && (drand48() <= (double)(N_ecDNA_hot)/(double)(Ntot))) break;
+				//if ((tissue[cell_x][cell_y].ecDNA > 0) && (drand48() <= (double)(N_ecDNA_hot)/(double)(Ntot))) break;
+				if (tissue[cell_x][cell_y].ecDNA > 0) break;
 			}
 
 			// Cell divides

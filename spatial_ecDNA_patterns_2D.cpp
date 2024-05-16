@@ -25,7 +25,7 @@ using namespace std;
 
 
 // Define global variables
-const int _maxsize = 1e5;
+const int _maxsize = 1e6;
 
 #define PI 3.14159265
 

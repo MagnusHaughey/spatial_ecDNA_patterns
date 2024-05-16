@@ -25,7 +25,7 @@ using namespace std;
 
 
 // Define global variables
-const int _maxsize = 1e6;
+const int _maxsize = 1e5;
 
 #define PI 3.14159265
 
@@ -40,19 +40,19 @@ int arising_time, x_b, y_b, direction, chosen_direction, min_length, num_mins, c
 int empty_cell_x, empty_cell_y, search_radius, num_nearest_empty_cells, rand_int, vertical_direction, horizontal_direction, i_lowerBound, j_lowerBound, i_upperBound, j_upperBound;
 int next_move_direction_x, next_move_direction_y, motherCell_copyNumber, clusterSize, initial_copyNumber, search_radius_incrememnt, minimum_edge_distance;
 
-vector<int> nearest_empty_cells_x;
-vector<int> nearest_empty_cells_y;
-
 
 // Define arrays which will contain relative coordinates of empty neighbours for a chosen cell 
-int chainX[1001];
-int chainY[1001];
-int moves_direction_x[1001];
-int moves_direction_y[1001];
-double moves_distances[1001];
-int previous_moves_direction_x[1001];
-int previous_moves_direction_y[1001];
-double previous_moves_distances[1001];
+vector<int> chainX(1001);
+vector<int> chainY(1001);
+vector<int> moves_direction_x(1001);
+vector<int> moves_direction_y(1001);
+vector<double> moves_distances(1001);
+vector<int> previous_moves_direction_x(1001);
+vector<int> previous_moves_direction_y(1001);
+vector<double> previous_moves_distances(1001);
+
+vector<int> nearest_empty_cells_x;
+vector<int> nearest_empty_cells_y;
 
 
 
@@ -102,57 +102,55 @@ class Cell
 
 
 
-// Straight line pushing 
-void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot , int *N_ecDNA_hot , int *x_b , int *y_b , double *r_birth , int radius , mt19937_64 *generator)
+
+//-----------------------
+
+
+
+
+
+
+// Find nearest empty lattice points from cell at given coordinates (x,y) = (cell_x,cell_y), and count the number of jointly nearest lattice points if more than one
+void find_nearest_empty_lattice_point(Cell** tissue , int cell_x , int cell_y , int* search_radius , int* search_radius_incrememnt , int minimum_edge_distance , double* nearest_space_distance , int* num_nearest_empty_cells , int* empty_cell_x , int* empty_cell_y)
 {
 
-	//cout << "\nCell at (x , y) = (" << cell_x << " , " << cell_y << ") wants to divide." << endl;
-
-	// Find nearest empty lattice point (this becomes the end of the chain of cells)
-	empty_cell_x = -1;
-	empty_cell_y = -1;
-	nearest_space_distance = 1e10;
-	num_nearest_empty_cells = 0;
 	stop_searching = false;
+	*empty_cell_x = -1;
+	*empty_cell_y = -1;
+	*nearest_space_distance = 1e10;
+	*num_nearest_empty_cells = 0;
 
-
-	search_radius_incrememnt = ceil(q/50.0);
-	search_radius = 1 - search_radius_incrememnt;
+	*search_radius_incrememnt = ceil(q/50.0);
+	*search_radius = 1 - *search_radius_incrememnt;
 
 	// Make sure we don't look off the edges of the array (this is necessary for very large increment sizes e.g. 500)
 	// Need to find the nearest 'edge' of the tissue array for the given moether cell co-ordinates
 	minimum_edge_distance = std::min({cell_x, (2*radius)-cell_x, cell_y, (2*radius)-cell_y});
 
-
-
-
-	//do
 	while (true)
 	{
 
-
-
 		// Make sure we don't look further than the max value, q, or off the edges of the array (this is necessary for very large increment sizes e.g. 500)
-		if (search_radius + search_radius_incrememnt >= minimum_edge_distance)
+		if (*search_radius + *search_radius_incrememnt >= minimum_edge_distance)
 		{
-			search_radius_incrememnt = minimum_edge_distance - 2;
+			*search_radius_incrememnt = minimum_edge_distance - 2;
 			stop_searching = true;
 		}
-		if (search_radius + search_radius_incrememnt > q)
+		if (*search_radius + *search_radius_incrememnt > q)
 		{
-			search_radius_incrememnt = q - search_radius;
+			*search_radius_incrememnt = q - *search_radius;
 			stop_searching = true;
 		}
 
 
-		search_radius += search_radius_incrememnt;
+		*search_radius += *search_radius_incrememnt;
 
 
 		// Search within a radius of search_radius_incrememnt from dividing cell for nearest empty lattice point 
 		// Loop through all cells within box of size 2*search_radius_incrememnt centred around dividing cell
-		for (int i = -search_radius; i <= search_radius; ++i)
+		for (int i = -(*search_radius); i <= *search_radius; ++i)
 		{
-			for (int j = -search_radius; j <= search_radius; ++j)
+			for (int j = -(*search_radius); j <= *search_radius; ++j)
 			{
 
 				// Compute distance between this cell and dividing cell
@@ -160,114 +158,98 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 
 
 				// Only check cells within distance search_radius of dividing cell
-				if (dist > float(search_radius*search_radius)) continue;
+				if (dist > float((*search_radius)*(*search_radius))) continue;
 
 
 				// Check if lattice coordinates are occupied or empty
 				if (tissue[cell_x + i][cell_y + j].ecDNA == -1)
 				{
 					// If found new nearest empty lattice point, update nearest distance and empty cell coordinates
-					if (dist < nearest_space_distance)
+					if (dist < *nearest_space_distance)
 					{
-						nearest_space_distance = dist;
-						empty_cell_x = cell_x + i;
-						empty_cell_y = cell_y + j;
+						*nearest_space_distance = dist;
+						*empty_cell_x = cell_x + i;
+						*empty_cell_y = cell_y + j;
 
-						num_nearest_empty_cells = 1;
+						*num_nearest_empty_cells = 1;
 					}
 
 					// If found another empty cell equally close to current nearest empty cell, simply keep track of number of joint nearest cells
-					else if (dist == nearest_space_distance) 
+					else if (dist == *nearest_space_distance) 
 					{
-						++num_nearest_empty_cells;
+						*num_nearest_empty_cells += 1;
 					}
 				}
 			}
 		}
 
-		if ((stop_searching == true) || ((empty_cell_x != -1) && (empty_cell_y != -1))) break;
+		if ((stop_searching == true) || ((*empty_cell_x != -1) && (*empty_cell_y != -1))) break;
 
 	}
-
-
-	if ((empty_cell_x == -1) && (empty_cell_y == -1)) return;
-
+}
 
 
 
 
 
 
-	// If there is more than 1 empty cell at the nearest distance to the dividing cell, choose one with uniform probability
-	if (num_nearest_empty_cells > 1)
+//-----------------------
+
+
+
+
+
+
+// If >1 joint nearest empty lattice point from cell at (x,y) = (cell_x,cell_y), select one with uniform probability 
+void choose_nearest_empty_lattice_point(Cell ** tissue , int cell_x , int cell_y , vector<int>& nearest_empty_cells_x , vector<int>& nearest_empty_cells_y , int search_radius , int nearest_space_distance , int *empty_cell_x , int *empty_cell_y)
+{
+
+	// Clear vector of co-ordinates to nearest empty lattice points 
+	nearest_empty_cells_x.clear();
+	nearest_empty_cells_y.clear();
+
+	for (int i = -search_radius; i <= search_radius; ++i)
 	{
-
-		// Clear vector of co-ordinates to nearest empty lattice points 
-		nearest_empty_cells_x.clear();
-		nearest_empty_cells_y.clear();
-
-		for (int i = -search_radius; i <= search_radius; ++i)
+		for (int j = -search_radius; j <= search_radius; ++j)
 		{
-			for (int j = -search_radius; j <= search_radius; ++j)
+			// Compute distance 
+			dist = (i*i) + (j*j);
+
+			// Only check cells within 20 cell radius of dividing cell
+			if (dist > float(search_radius*search_radius)) continue;
+
+			// Check if lattice coordinates are occupied or empty
+			if ((tissue[cell_x + i][cell_y + j].ecDNA == -1) && (dist == nearest_space_distance))
 			{
-				// Compute distance 
-				dist = (i*i) + (j*j);
-
-				// Only check cells within 20 cell radius of dividing cell
-				if (dist > float(search_radius*search_radius)) continue;
-
-				// Check if lattice coordinates are occupied or empty
-				if ((tissue[cell_x + i][cell_y + j].ecDNA == -1) && (dist == nearest_space_distance))
-				{
-					nearest_empty_cells_x.push_back(cell_x + i);
-					nearest_empty_cells_y.push_back(cell_y + j);
-				}
+				nearest_empty_cells_x.push_back(cell_x + i);
+				nearest_empty_cells_y.push_back(cell_y + j);
 			}
 		}
-
-
-
-		// Choose which of the cells will divide
-		rand_int = int(round(drand48()*(num_nearest_empty_cells-1)));
-		empty_cell_x = nearest_empty_cells_x[rand_int];
-		empty_cell_y = nearest_empty_cells_y[rand_int];
-
-
-
 	}
 
 
 
-
-
-	// Decide whether horizontal cell movements will be left or right, similarly for vertical movements
-	horizontal_direction = 0;
-	vertical_direction = 0;
-
-	if (empty_cell_x > cell_x) horizontal_direction = 1;
-	else if (cell_x > empty_cell_x) horizontal_direction = -1;
-
-	if (empty_cell_y > cell_y) vertical_direction = 1;
-	else if (cell_y > empty_cell_y) vertical_direction = -1;
+	// Choose which of the cells will divide
+	rand_int = int(round(drand48()*(num_nearest_empty_cells-1)));
+	*empty_cell_x = nearest_empty_cells_x[rand_int];
+	*empty_cell_y = nearest_empty_cells_y[rand_int];
+}
 
 
 
 
 
-	// Draw straight line between dividing cell and empty lattice point
-	cell_cell_chord_gradient = 0.0;
-	cell_cell_chord_yIntercept = 0.0;
-	if (empty_cell_x != cell_x)
-	{
-		cell_cell_chord_gradient = float(empty_cell_y - cell_y)/float(empty_cell_x - cell_x);
-		cell_cell_chord_yIntercept = cell_y - (cell_cell_chord_gradient * cell_x);
-	}
+
+//-----------------------
 
 
 
 
 
-	// Construct chain by finding intersection of cell-cell chord with vertical & horizontal lines between (cell_x , cell_y) and (empty_cell_x , empty_cell_y)
+
+void construct_cell_pushing_path(int cell_x , int cell_y , int empty_cell_x , int empty_cell_y , int* queue , vector<int>& moves_direction_x , vector<int>& moves_direction_y , vector<double>& moves_distances , vector<int>& previous_moves_direction_x , vector<int>& previous_moves_direction_y , vector<double>& previous_moves_distances , vector<int>& chainX , vector<int>& chainY)
+{
+
 	i_lowerBound = cell_x;
 	i_upperBound = empty_cell_x;
 	j_lowerBound = cell_y;
@@ -285,7 +267,7 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 		j_upperBound = cell_y;
 	}
 
-	queue = 0;
+	*queue = 0;
 
 
 
@@ -299,13 +281,13 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 		dist = pow((cell_x - i) , 2) + pow((cell_y - y_boundary_intersect) , 2);
 
 		// Store move in list
-		moves_direction_x[queue] = horizontal_direction;
-		moves_direction_y[queue] = 0;
+		moves_direction_x[*queue] = horizontal_direction;
+		moves_direction_y[*queue] = 0;
 
 		// Store distance in list
-		moves_distances[queue] = dist;
+		moves_distances[*queue] = dist;
 
-		queue += 1;
+		*queue += 1;
 	}
 
 
@@ -322,13 +304,13 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 		dist = pow((cell_x - x_boundary_intersect) , 2) + pow((cell_y - j) , 2);
 
 		// Store move in list
-		moves_direction_x[queue] = 0;
-		moves_direction_y[queue] = vertical_direction;
+		moves_direction_x[*queue] = 0;
+		moves_direction_y[*queue] = vertical_direction;
 
 		// Store distance in list
-		moves_distances[queue] = dist;
+		moves_distances[*queue] = dist;
 
-		queue += 1;
+		*queue += 1;
 	}
 
 
@@ -336,7 +318,7 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 
 
 	// Reset lists containing previous move information 
-	for (int i = 0; i < queue; ++i)
+	for (int i = 0; i < *queue; ++i)
 	{
 		previous_moves_distances[i] = 0.0;
 		previous_moves_direction_x[i] = -10;
@@ -350,11 +332,11 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 	// All moves have been determined, but are not yet in order of distance from dividing cell. 
 	// So, loop through moves and their distances, and construct chain of cell coordinates.
 	chain_length = 0;
-	while (chain_length != queue)
+	while (chain_length != *queue)
 	{
 		min_move_distance = 1e10;
 
-		for (int i = 0; i < queue; ++i)
+		for (int i = 0; i < *queue; ++i)
 		{
 			skip = false;
 
@@ -401,40 +383,53 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 	}
 
 
+}
 
 
 
 
-	// Once the chain has been constructed, move all cells along one place
-	if (queue > 0)
+
+
+//-----------------------
+
+
+
+
+
+
+void move_cells_along_path(Cell ** tissue , vector<int>& chainX , vector<int>& chainY , int* queue , int horizontal_direction , int vertical_direction , int *x_b , int *y_b , int radius , int empty_cell_x , int empty_cell_y)
+{
+	if (*queue > 0)
 	{
+
+		//cout << "queue = " << queue << endl;
 
 		// Add two final moves (one vertical and one horizontal) to the end of the chain
 		if (drand48() < 0.5)
 		{
-			chainX[queue] = chainX[queue - 1] + horizontal_direction;
-			chainY[queue] = chainY[queue - 1] + 0;
+			chainX[*queue] = chainX[*queue - 1] + horizontal_direction;
+			chainY[*queue] = chainY[*queue - 1] + 0;
 
-			++queue;
+			*queue += 1;
 
-			chainX[queue] = chainX[queue - 1] + 0;
-			chainY[queue] = chainY[queue - 1] + vertical_direction;
+			chainX[*queue] = chainX[*queue - 1] + 0;
+			chainY[*queue] = chainY[*queue - 1] + vertical_direction;
 		}
 		else
 		{
-			chainX[queue] = chainX[queue - 1] + 0;
-			chainY[queue] = chainY[queue - 1] + vertical_direction;
+			chainX[*queue] = chainX[*queue - 1] + 0;
+			chainY[*queue] = chainY[*queue - 1] + vertical_direction;
 
-			++queue;
+			*queue += 1;
 
-			chainX[queue] = chainX[queue - 1] + horizontal_direction;
-			chainY[queue] = chainY[queue - 1] + 0;
+			chainX[*queue] = chainX[*queue - 1] + horizontal_direction;
+			chainY[*queue] = chainY[*queue - 1] + 0;
 		}
 
 
-		for (int i = 0; i < queue; ++i)
+		for (int i = 0; i < *queue; ++i)
 		{
-			tissue[chainX[queue-i]][chainY[queue-i]].ecDNA = tissue[chainX[queue-i-1]][chainY[queue-i-1]].ecDNA;
+			tissue[chainX[*queue-i]][chainY[*queue-i]].ecDNA = tissue[chainX[*queue-i-1]][chainY[*queue-i-1]].ecDNA;
 
 			// Update bounds on tissue size
 			if (fabs(chainX[i] + 1 - radius) > *x_b) *x_b = fabs(chainX[i] + 1 - radius);
@@ -452,26 +447,141 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 
 
 
-	if (queue == 0)
+	if (*queue == 0)
 	{
 		chainX[0] = empty_cell_x;
 		chainY[0] = empty_cell_y;
 	}
+}
 
 
 
+
+
+
+//-----------------------
+
+
+
+
+
+
+void choose_horizontal_and_vertical_move_directions(int cell_x , int cell_y , int empty_cell_x , int empty_cell_y , int* horizontal_direction , int* vertical_direction)
+{
+	*horizontal_direction = 0;
+	*vertical_direction = 0;
+
+	if (empty_cell_x > cell_x) *horizontal_direction = 1;
+	else if (cell_x > empty_cell_x) *horizontal_direction = -1;
+
+	if (empty_cell_y > cell_y) *vertical_direction = 1;
+	else if (cell_y > empty_cell_y) *vertical_direction = -1;
+}
+
+
+
+
+
+
+//-----------------------
+
+
+
+
+
+
+void compute_cell_cell_chord(double* cell_cell_chord_gradient , double* cell_cell_chord_yIntercept , int cell_x , int cell_y , int empty_cell_x , int empty_cell_y)
+{
+	*cell_cell_chord_gradient = 0.0;
+	*cell_cell_chord_yIntercept = 0.0;
+	if (empty_cell_x != cell_x)
+	{
+		*cell_cell_chord_gradient = float(empty_cell_y - cell_y)/float(empty_cell_x - cell_x);
+		*cell_cell_chord_yIntercept = cell_y - (*cell_cell_chord_gradient * cell_x);
+	}
+}
+
+
+
+
+
+
+//-----------------------
+
+
+
+
+
+
+void distribute_ecDNA(Cell ** tissue , int cell_x , int cell_y , int* daughter_ecDNA_copyNumber1 , int* daughter_ecDNA_copyNumber2 , mt19937_64 *generator)
+{
+	// Every ecDNA is copied once
+	doubled_ecDNA_copyNumber = tissue[cell_x][cell_y].ecDNA * 2;
+
+	// Distribute ecDNA between two daughter cells according to binomial
+	binomial_distribution<int> draw_new_ecDNA_copyNumber(doubled_ecDNA_copyNumber , 0.5);
+	*daughter_ecDNA_copyNumber1 = draw_new_ecDNA_copyNumber(*generator);
+	*daughter_ecDNA_copyNumber2 = doubled_ecDNA_copyNumber - *daughter_ecDNA_copyNumber1;
+}
+
+
+
+
+
+
+//-----------------------
+
+
+
+
+
+
+// Straight line pushing 
+void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot , int *N_ecDNA_hot , int *x_b , int *y_b , double *r_birth , int radius , mt19937_64 *generator)
+{
+
+
+	// Find nearest (or joint nearest) empty lattice points from dividing cell at (cell_x , cell_y)
+	find_nearest_empty_lattice_point(tissue , cell_x , cell_y , &search_radius , &search_radius_incrememnt , minimum_edge_distance , &nearest_space_distance , &num_nearest_empty_cells , &empty_cell_x , &empty_cell_y);
+
+
+
+	// If no empty lattice points within max radius of q from dividing cell, cell cannot divide. Exit.
+	if ((empty_cell_x == -1) && (empty_cell_y == -1)) return;
+
+
+
+	// If there is more than 1 empty cell at the nearest distance to the dividing cell, choose one with uniform probability
+	if (num_nearest_empty_cells > 1)
+	{
+		choose_nearest_empty_lattice_point(tissue , cell_x , cell_y , nearest_empty_cells_x , nearest_empty_cells_y , search_radius , nearest_space_distance , &empty_cell_x , &empty_cell_y);
+	}
+
+
+
+	// Decide whether horizontal cell movements will be left or right, similarly for vertical movements
+	choose_horizontal_and_vertical_move_directions(cell_x , cell_y , empty_cell_x , empty_cell_y , &horizontal_direction , &vertical_direction);
+
+
+
+	// Draw straight line between dividing cell and empty lattice point
+	compute_cell_cell_chord(&cell_cell_chord_gradient , &cell_cell_chord_yIntercept , cell_x , cell_y , empty_cell_x , empty_cell_y);
+
+
+
+	// Construct chain by finding intersection of cell-cell chord with vertical & horizontal lines between (cell_x , cell_y) and (empty_cell_x , empty_cell_y)
+	construct_cell_pushing_path(cell_x , cell_y , empty_cell_x , empty_cell_y , &queue , moves_direction_x , moves_direction_y , moves_distances , previous_moves_direction_x , previous_moves_direction_y , previous_moves_distances , chainX , chainY);
+
+	
+
+	// Once the chain has been constructed, move all cells along one place
+	move_cells_along_path(tissue , chainX , chainY , &queue , horizontal_direction , vertical_direction , x_b , y_b , radius , empty_cell_x , empty_cell_y);
 
 
 
 	// Nearby cells have been pushed and an empty space created next to dividing cell. Now deal with cell division and ecDNA inheritance
-	// Every ecDNA is copied once
-	doubled_ecDNA_copyNumber = tissue[cell_x][cell_y].ecDNA * 2;
-
-
-	// Distribute ecDNA between two daughter cells according to binomial
-            binomial_distribution<int> draw_new_ecDNA_copyNumber(doubled_ecDNA_copyNumber , 0.5);
-            daughter_ecDNA_copyNumber1 = draw_new_ecDNA_copyNumber(*generator);
-            daughter_ecDNA_copyNumber2 = doubled_ecDNA_copyNumber - daughter_ecDNA_copyNumber1;
+	distribute_ecDNA(tissue , cell_x , cell_y , &daughter_ecDNA_copyNumber1 , &daughter_ecDNA_copyNumber2 , generator);
+	
 
 
 	// Create daughter cell
@@ -937,18 +1047,18 @@ int main(int argc, char** argv)
 
 	stringstream f;
 	f.str("");
-	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_hubs=" << boolalpha << clustering_flag << "/seed=" << seed;
+	f << "./2D_DATA/Nmax=" << _maxsize << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed;
 	DIR *dir = opendir(f.str().c_str());
 	if(!dir)
 	{
 		f.str("");
-		f << "mkdir -p ./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_hubs=" << boolalpha << clustering_flag << "/seed=" << seed;
+		f << "mkdir -p ./2D_DATA/Nmax=" << _maxsize << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed;
 		system(f.str().c_str());
 	}
 
 	ofstream tissue_file;
 	f.str("");
-	f << "./2D_DATA/Nmax=" << _maxsize << "_initialCopyNumber=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "_hubs=" << boolalpha << clustering_flag << "/seed=" << seed << "/tissue.csv";
+	f << "./2D_DATA/Nmax=" << _maxsize << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed << "/tissue.csv";
 	tissue_file.open(f.str().c_str());
 
 

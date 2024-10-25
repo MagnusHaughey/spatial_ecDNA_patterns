@@ -1047,18 +1047,18 @@ int main(int argc, char** argv)
 
 	stringstream f;
 	f.str("");
-	f << "./2D_DATA/Nmax=" << _maxsize << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed;
+	f << "./results/Nmax=" << _maxsize << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed;
 	DIR *dir = opendir(f.str().c_str());
 	if(!dir)
 	{
 		f.str("");
-		f << "mkdir -p ./2D_DATA/Nmax=" << _maxsize << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed;
+		f << "mkdir -p ./results/Nmax=" << _maxsize << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed;
 		system(f.str().c_str());
 	}
 
 	ofstream tissue_file;
 	f.str("");
-	f << "./2D_DATA/Nmax=" << _maxsize << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed << "/tissue.csv";
+	f << "./results/Nmax=" << _maxsize << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed << "/tissue.csv";
 	tissue_file.open(f.str().c_str());
 
 

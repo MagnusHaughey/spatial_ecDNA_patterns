@@ -54,7 +54,7 @@ Imran Noorani<sup>*1,2,3</sup>, Magnus Haughey<sup>*4</sup>, Jens Luebeck<sup>5<
 23. Group of Theoretical Biology, The State Key Laboratory of Biocontrol, School of Life Science, Sun Yat-sen University, Guangzhou, China
 24. Department of Oncology, University College London Hospitals, London, United Kingdom
 
-* These authors contributed equally to this work.
+\* These authors contributed equally to this work.
 
 
 ## Abstract

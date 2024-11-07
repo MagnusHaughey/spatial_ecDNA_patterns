@@ -5,7 +5,7 @@ This repository contains the code for simulating the spatial patterns of ecDNA c
 Execute a simulation by running:
 
 ```
-g++ -o ./spatial_ecDNA_patterns_2D ./spatial_ecDNA_patterns_2D.cpp -std=c++20
+g++ -o ./spatial_ecDNA_patterns_2D ./spatial_ecDNA_patterns_2D.cpp
 ./spatial_ecDNA_patterns_2D [--verbose] [-q Q] [-n N] [-s S] [-x X]
 ```
 

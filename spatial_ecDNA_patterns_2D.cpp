@@ -125,7 +125,12 @@ void find_nearest_empty_lattice_point(Cell** tissue , int cell_x , int cell_y , 
 
 	// Make sure we don't look off the edges of the array (this is necessary for very large increment sizes e.g. 500)
 	// Need to find the nearest 'edge' of the tissue array for the given moether cell co-ordinates
-	minimum_edge_distance = std::min({cell_x, (2*radius)-cell_x, cell_y, (2*radius)-cell_y});
+	//minimum_edge_distance = std::min({cell_x, (2*radius)-cell_x, cell_y, (2*radius)-cell_y});
+
+	if ((cell_x < (2*radius)-cell_x) && (cell_x < cell_y) && (cell_x < (2*radius)-cell_y)) minimum_edge_distance = cell_x;
+	else if (((2*radius)-cell_x < cell_x) && ((2*radius)-cell_x < cell_y) && ((2*radius)-cell_x < (2*radius)-cell_y)) minimum_edge_distance = (2*radius)-cell_x;
+	else if ((cell_y < cell_x) && (cell_y < (2*radius)-cell_x) && (cell_y < (2*radius)-cell_y)) minimum_edge_distance = cell_y;
+	else minimum_edge_distance = (2*radius)-cell_y;
 
 	while (true)
 	{

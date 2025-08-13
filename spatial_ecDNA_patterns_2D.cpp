@@ -24,18 +24,14 @@ using namespace std;
 
 
 
-// Define global variables
-const int _maxsize = 1e6;
-
+// Declare variables
 #define PI 3.14159265
 
-
-int q, seed;
 
 double radius_double, t, r_birth , r_birth_ecDNA_negative , r_birth_ecDNA_positive , r_death, r_birth_normalised , r_birth_ecDNA_negative_normalised , r_birth_ecDNA_positive_normalised , r_death_normalised, rand_double, cell_cell_chord_gradient, cell_cell_chord_yIntercept, min_move_distance, selection_coeff;
 double optimal_direction_i,  optimal_direction_j, optimal_vector_norm, vector_norm, rescaled_min_length, scalar_prod, dist, nearest_space_distance, x_boundary_intersect, y_boundary_intersect;
 double weibull_shape, weibull_scale, birth_rate_sum;
-int radius, Ntot, N_ecDNA_hot, iter, x, y, cell_x, cell_y, dir, queue, ind, length, coordX, coordY, previous_link_direction, chain_length;
+int Nmax, q, seed, radius, Ntot, N_ecDNA_hot, iter, x, y, cell_x, cell_y, dir, queue_size, ind, length, coordX, coordY, previous_link_direction, chain_length;
 int arising_time, x_b, y_b, direction, chosen_direction, min_length, num_mins, chosen_min, doubled_ecDNA_copyNumber, daughter_ecDNA_copyNumber1, daughter_ecDNA_copyNumber2;
 int empty_cell_x, empty_cell_y, search_radius, num_nearest_empty_cells, rand_int, vertical_direction, horizontal_direction, i_lowerBound, j_lowerBound, i_upperBound, j_upperBound;
 int next_move_direction_x, next_move_direction_y, motherCell_copyNumber, clusterSize, initial_copyNumber, search_radius_incrememnt, minimum_edge_distance;
@@ -252,7 +248,7 @@ void choose_nearest_empty_lattice_point(Cell ** tissue , int cell_x , int cell_y
 
 
 
-void construct_cell_pushing_path(int cell_x , int cell_y , int empty_cell_x , int empty_cell_y , int* queue , vector<int>& moves_direction_x , vector<int>& moves_direction_y , vector<double>& moves_distances , vector<int>& previous_moves_direction_x , vector<int>& previous_moves_direction_y , vector<double>& previous_moves_distances , vector<int>& chainX , vector<int>& chainY)
+void construct_cell_pushing_path(int cell_x , int cell_y , int empty_cell_x , int empty_cell_y , int* queue_size , vector<int>& moves_direction_x , vector<int>& moves_direction_y , vector<double>& moves_distances , vector<int>& previous_moves_direction_x , vector<int>& previous_moves_direction_y , vector<double>& previous_moves_distances , vector<int>& chainX , vector<int>& chainY)
 {
 
 	i_lowerBound = cell_x;
@@ -272,7 +268,7 @@ void construct_cell_pushing_path(int cell_x , int cell_y , int empty_cell_x , in
 		j_upperBound = cell_y;
 	}
 
-	*queue = 0;
+	*queue_size = 0;
 
 
 
@@ -286,13 +282,13 @@ void construct_cell_pushing_path(int cell_x , int cell_y , int empty_cell_x , in
 		dist = pow((cell_x - i) , 2) + pow((cell_y - y_boundary_intersect) , 2);
 
 		// Store move in list
-		moves_direction_x[*queue] = horizontal_direction;
-		moves_direction_y[*queue] = 0;
+		moves_direction_x[*queue_size] = horizontal_direction;
+		moves_direction_y[*queue_size] = 0;
 
 		// Store distance in list
-		moves_distances[*queue] = dist;
+		moves_distances[*queue_size] = dist;
 
-		*queue += 1;
+		*queue_size += 1;
 	}
 
 
@@ -309,13 +305,13 @@ void construct_cell_pushing_path(int cell_x , int cell_y , int empty_cell_x , in
 		dist = pow((cell_x - x_boundary_intersect) , 2) + pow((cell_y - j) , 2);
 
 		// Store move in list
-		moves_direction_x[*queue] = 0;
-		moves_direction_y[*queue] = vertical_direction;
+		moves_direction_x[*queue_size] = 0;
+		moves_direction_y[*queue_size] = vertical_direction;
 
 		// Store distance in list
-		moves_distances[*queue] = dist;
+		moves_distances[*queue_size] = dist;
 
-		*queue += 1;
+		*queue_size += 1;
 	}
 
 
@@ -323,7 +319,7 @@ void construct_cell_pushing_path(int cell_x , int cell_y , int empty_cell_x , in
 
 
 	// Reset lists containing previous move information 
-	for (int i = 0; i < *queue; ++i)
+	for (int i = 0; i < *queue_size; ++i)
 	{
 		previous_moves_distances[i] = 0.0;
 		previous_moves_direction_x[i] = -10;
@@ -337,11 +333,11 @@ void construct_cell_pushing_path(int cell_x , int cell_y , int empty_cell_x , in
 	// All moves have been determined, but are not yet in order of distance from dividing cell. 
 	// So, loop through moves and their distances, and construct chain of cell coordinates.
 	chain_length = 0;
-	while (chain_length != *queue)
+	while (chain_length != *queue_size)
 	{
 		min_move_distance = 1e10;
 
-		for (int i = 0; i < *queue; ++i)
+		for (int i = 0; i < *queue_size; ++i)
 		{
 			skip = false;
 
@@ -402,39 +398,39 @@ void construct_cell_pushing_path(int cell_x , int cell_y , int empty_cell_x , in
 
 
 
-void move_cells_along_path(Cell ** tissue , vector<int>& chainX , vector<int>& chainY , int* queue , int horizontal_direction , int vertical_direction , int *x_b , int *y_b , int radius , int empty_cell_x , int empty_cell_y)
+void move_cells_along_path(Cell ** tissue , vector<int>& chainX , vector<int>& chainY , int* queue_size , int horizontal_direction , int vertical_direction , int *x_b , int *y_b , int radius , int empty_cell_x , int empty_cell_y)
 {
-	if (*queue > 0)
+	if (*queue_size > 0)
 	{
 
-		//cout << "queue = " << queue << endl;
+		//cout << "queue_size = " << queue_size << endl;
 
 		// Add two final moves (one vertical and one horizontal) to the end of the chain
 		if (drand48() < 0.5)
 		{
-			chainX[*queue] = chainX[*queue - 1] + horizontal_direction;
-			chainY[*queue] = chainY[*queue - 1] + 0;
+			chainX[*queue_size] = chainX[*queue_size - 1] + horizontal_direction;
+			chainY[*queue_size] = chainY[*queue_size - 1] + 0;
 
-			*queue += 1;
+			*queue_size += 1;
 
-			chainX[*queue] = chainX[*queue - 1] + 0;
-			chainY[*queue] = chainY[*queue - 1] + vertical_direction;
+			chainX[*queue_size] = chainX[*queue_size - 1] + 0;
+			chainY[*queue_size] = chainY[*queue_size - 1] + vertical_direction;
 		}
 		else
 		{
-			chainX[*queue] = chainX[*queue - 1] + 0;
-			chainY[*queue] = chainY[*queue - 1] + vertical_direction;
+			chainX[*queue_size] = chainX[*queue_size - 1] + 0;
+			chainY[*queue_size] = chainY[*queue_size - 1] + vertical_direction;
 
-			*queue += 1;
+			*queue_size += 1;
 
-			chainX[*queue] = chainX[*queue - 1] + horizontal_direction;
-			chainY[*queue] = chainY[*queue - 1] + 0;
+			chainX[*queue_size] = chainX[*queue_size - 1] + horizontal_direction;
+			chainY[*queue_size] = chainY[*queue_size - 1] + 0;
 		}
 
 
-		for (int i = 0; i < *queue; ++i)
+		for (int i = 0; i < *queue_size; ++i)
 		{
-			tissue[chainX[*queue-i]][chainY[*queue-i]].ecDNA = tissue[chainX[*queue-i-1]][chainY[*queue-i-1]].ecDNA;
+			tissue[chainX[*queue_size-i]][chainY[*queue_size-i]].ecDNA = tissue[chainX[*queue_size-i-1]][chainY[*queue_size-i-1]].ecDNA;
 
 			// Update bounds on tissue size
 			if (fabs(chainX[i] + 1 - radius) > *x_b) *x_b = fabs(chainX[i] + 1 - radius);
@@ -443,7 +439,7 @@ void move_cells_along_path(Cell ** tissue , vector<int>& chainX , vector<int>& c
 
 	}
 
-	else 	// Even if queue=0, check that newly created cell increases any bounds
+	else 	// Even if queue_size=0, check that newly created cell increases any bounds
 	{
 		// Update bounds on tissue size
 		if (fabs(chainX[0] + 1 - radius) > *x_b) *x_b = fabs(chainX[0] + 1 - radius);
@@ -452,7 +448,7 @@ void move_cells_along_path(Cell ** tissue , vector<int>& chainX , vector<int>& c
 
 
 
-	if (*queue == 0)
+	if (*queue_size == 0)
 	{
 		chainX[0] = empty_cell_x;
 		chainY[0] = empty_cell_y;
@@ -575,12 +571,12 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 
 
 	// Construct chain by finding intersection of cell-cell chord with vertical & horizontal lines between (cell_x , cell_y) and (empty_cell_x , empty_cell_y)
-	construct_cell_pushing_path(cell_x , cell_y , empty_cell_x , empty_cell_y , &queue , moves_direction_x , moves_direction_y , moves_distances , previous_moves_direction_x , previous_moves_direction_y , previous_moves_distances , chainX , chainY);
+	construct_cell_pushing_path(cell_x , cell_y , empty_cell_x , empty_cell_y , &queue_size , moves_direction_x , moves_direction_y , moves_distances , previous_moves_direction_x , previous_moves_direction_y , previous_moves_distances , chainX , chainY);
 
 	
 
 	// Once the chain has been constructed, move all cells along one place
-	move_cells_along_path(tissue , chainX , chainY , &queue , horizontal_direction , vertical_direction , x_b , y_b , radius , empty_cell_x , empty_cell_y);
+	move_cells_along_path(tissue , chainX , chainY , &queue_size , horizontal_direction , vertical_direction , x_b , y_b , radius , empty_cell_x , empty_cell_y);
 
 
 
@@ -601,7 +597,7 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 
 
 
-	if ((chainX[queue] != empty_cell_x) || (chainY[queue] != empty_cell_y))
+	if ((chainX[queue_size] != empty_cell_x) || (chainY[queue_size] != empty_cell_y))
 	{
 		cout << "Error with pushing algorithm!" << endl;
 		exit(0);
@@ -621,7 +617,7 @@ void straight_line_division(Cell ** tissue , int cell_x , int cell_y , int *Ntot
 
 
 // Parse command line arguments (Flags and numerical arguments)
-void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , int *seed , int *q , int *initial_copyNumber , double *selection_coeff)
+void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , int *seed , int *Nmax , int *q , int *initial_copyNumber , double *selection_coeff)
 {
 	int c;
 	int option_index;
@@ -633,7 +629,7 @@ void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , i
 		{"verbose", no_argument, &verbose, 1},
 	}; 
 
-	while ((c = getopt_long(argc, argv, "x:q:n:s:", long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "x:q:n:s:N:", long_options, &option_index)) != -1)
 	switch (c)
 	{
 		case 0:
@@ -659,8 +655,12 @@ void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , i
 
 		// Selection coefficient
 		case 's':
-			*
-			selection_coeff = atof(optarg);
+			*selection_coeff = atof(optarg);
+			break;
+
+		// Selection coefficient
+		case 'N':
+			*Nmax = atoi(optarg);
 			break;
 
 		case '?':
@@ -690,6 +690,14 @@ void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , i
 		exit(0);
 	}
 
+
+	if (*Nmax <= 0)
+	{
+		cout << "Maximum tumor size Nmax must be greater than 0. Exiting." << endl;
+		exit(0);
+	}
+
+
 	if (*initial_copyNumber < 0)
 	{
 		cout << "Initial copy number must be 0 or greater. Exiting." << endl;
@@ -710,12 +718,12 @@ void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , i
 
 
 // Set up tissue (i.e. array of cells)
-Cell** initialise_tissue(int _maxsize , int *Ntot , int *N_ecDNA_hot , int initial_copyNumber)
+Cell** initialise_tissue(int Nmax , int *Ntot , int *N_ecDNA_hot , int initial_copyNumber)
 {
 
 	
-	// Estimate radius of final system based on _maxsize
-	radius_double = pow ( (_maxsize/M_PI) , (1.0/2.0) );
+	// Estimate radius of final system based on Nmax
+	radius_double = pow ( (Nmax/M_PI) , (1.0/2.0) );
 
 
 	// Slightly over-estimate this to avoid segmentation errors
@@ -917,10 +925,11 @@ int main(int argc, char** argv)
 	N_ecDNA_hot = 0;
 	selection_coeff = 0.0;
 	q = 0;
+	Nmax = 0;
 
 
 	//================== Parse command line arguments ====================//
-	parse_command_line_arguments(argc , argv , &verbose_flag , &seed , &q , &initial_copyNumber , &selection_coeff);
+	parse_command_line_arguments(argc , argv , &verbose_flag , &seed , &Nmax , &q , &initial_copyNumber , &selection_coeff);
 
 
 
@@ -934,7 +943,7 @@ int main(int argc, char** argv)
 
 
 	//================== Initialise tissue ====================//
-	Cell ** tissue = initialise_tissue(_maxsize , &Ntot , &N_ecDNA_hot , initial_copyNumber);
+	Cell ** tissue = initialise_tissue(Nmax , &Ntot , &N_ecDNA_hot , initial_copyNumber);
 
 
 
@@ -960,7 +969,7 @@ int main(int argc, char** argv)
 
 
 		// After initial expansion, update x- and y-bounds to include entire space
-		if (Ntot > 0.1*_maxsize)
+		if (Ntot > 0.1*Nmax)
 		{
 			x_b = radius;
 			y_b = radius;
@@ -1033,7 +1042,7 @@ int main(int argc, char** argv)
 
 
 
-	} while (Ntot < _maxsize);		// Exit once system has reached total size of _maxsize
+	} while (Ntot < Nmax);		// Exit once system has reached total size of Nmax
 
 	if (verbose_flag) cout << " " << endl;
 
@@ -1052,18 +1061,18 @@ int main(int argc, char** argv)
 
 	stringstream f;
 	f.str("");
-	f << "./results/Nmax=" << _maxsize << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed;
+	f << "./results/Nmax=" << Nmax << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed;
 	DIR *dir = opendir(f.str().c_str());
 	if(!dir)
 	{
 		f.str("");
-		f << "mkdir -p ./results/Nmax=" << _maxsize << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed;
+		f << "mkdir -p ./results/Nmax=" << Nmax << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed;
 		system(f.str().c_str());
 	}
 
 	ofstream tissue_file;
 	f.str("");
-	f << "./results/Nmax=" << _maxsize << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed << "/tissue.csv";
+	f << "./results/Nmax=" << Nmax << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed << "/tissue.csv";
 	tissue_file.open(f.str().c_str());
 
 
@@ -1079,7 +1088,7 @@ int main(int argc, char** argv)
 	{
 		for (int j = 0; j < (2*radius); j++)
 		{
-			tissue_file << i << "," << j << "," << tissue[i][j].ecDNA << endl;
+			if (tissue[i][j].ecDNA != -1) tissue_file << i << "," << j << "," << tissue[i][j].ecDNA << endl;
 		}
 	}
 

@@ -11,6 +11,7 @@ from matplotlib import cm
 from matplotlib.colors import ListedColormap, LinearSegmentedColormap
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.patches import Rectangle
+import matplotlib.patches as patches
 
 
 
@@ -99,7 +100,7 @@ else:	## If plotCopyNumber flag is specified, plot ecDNA- cells as blue, and ecD
 
 
 	### First, plot empty lattice points and cells with zero ecDNA
-	fig, ax = plt.subplots(nrows = 1 , ncols = 2 , gridspec_kw = {'width_ratios': [5, 1]})
+	fig, ax = plt.subplot_mosaic(mosaic = "AABC" , figsize = (8,5) , width_ratios = (3,3,1,3))
 
 	# Initiate input array
 	toPlot = np.zeros((int(largest_dim)+1 , int(largest_dim)+1))
@@ -115,14 +116,14 @@ else:	## If plotCopyNumber flag is specified, plot ecDNA- cells as blue, and ecD
 	norm = mpl.colors.Normalize(vmin = 0, vmax = 3)
 
 	# Plot formatting stuff
-	ax[0].axis('off')
+	ax["A"].axis('off')
 
 	# Plot
 	toPlot_x = np.linspace(0 , int(largest_dim)+1 , int(largest_dim)+1)
 	toPlot_y = np.linspace(0 , int(largest_dim)+1 , int(largest_dim)+1)
 	X , Y = np.meshgrid(toPlot_x , toPlot_y)
 
-	ax[0].pcolor(X , Y , toPlot , cmap = cmap , shading = 'auto' , snap = True)
+	ax["A"].pcolor(X , Y , toPlot , cmap = cmap , shading = 'auto' , snap = True)
 
 
 
@@ -156,50 +157,89 @@ else:	## If plotCopyNumber flag is specified, plot ecDNA- cells as blue, and ecD
 	toPlot_x = np.linspace(0 , int(largest_dim)+1 , int(largest_dim)+1)
 	toPlot_y = np.linspace(0 , int(largest_dim)+1 , int(largest_dim)+1)
 	X , Y = np.meshgrid(toPlot_x , toPlot_y)
-	coloured_cells = ax[0].pcolor(X , Y , toPlot , cmap = newcmp , shading = 'auto' , vmin = np.min([val for val in mutations if val > 0]) , vmax = np.max(mutations) , snap = True)
+	coloured_cells = ax["A"].pcolor(X , Y , toPlot , cmap = newcmp , shading = 'auto' , vmin = np.min([val for val in mutations if val > 0]) , vmax = np.max(mutations) , snap = True)
 
 
 
 	# Colourbar
-	cbar = plt.colorbar(coloured_cells , orientation = 'vertical' , aspect = 12 , fraction = 0.05)
-	cbar.ax.tick_params(size = 0)
-	cbar.set_ticks([])
+	#cbar = plt.colorbar(coloured_cells , orientation = 'vertical' , aspect = 12 , fraction = 0.05)
+	#cbar.ax.tick_params(size = 0)
+	#cbar.set_ticks([])
 
 
 
 	### Third, plot colourbar and distribution of ecDNA copy numbers
 	mutations_dataframe = pd.DataFrame([val for val in mutations if val > 0] , columns = ["#ecDNA"])
-	sns.kdeplot(data = mutations_dataframe , y = "#ecDNA" , ax = ax[1] , cut = 0 , zorder = 10 , color = "black" , fill = True , bw_adjust = 0.75)
+	sns.kdeplot(data = mutations_dataframe , y = "#ecDNA" , ax = ax["C"] , cut = 0 , zorder = 10 , color = "black" , fill = True , bw_adjust = 0.75)
 	sns.despine(bottom = True, left = True)
 
 
 	# Axes and tick formatting
-	ax[1].tick_params(axis = 'y' , labelsize = 10 , width = 0 , pad = 20)
-	ax[1].tick_params(axis = 'x' , which = 'both' , bottom = False , labelbottom = False) 
-	ax[1].set_xlabel("")
+	ax["C"].tick_params(axis = 'y' , labelsize = 10 , width = 0 , pad = 20)
+	ax["C"].tick_params(axis = 'x' , which = 'both' , bottom = False , labelbottom = False) 
+	ax["C"].set_xlabel("")
 
-	custom_yticks = [0]
-	i = 1
-	while(True):
-		if (i*100 <= np.max(mutations)):
-			custom_yticks.append(i*100)
-			i += 1
-		else:
-			break
+	
+	if (np.max(mutations) > 100):
+		custom_yticks = [0]
+		i = 1
+		while(True):
+			if (i*100 <= np.max(mutations)):
+				custom_yticks.append(i*100)
+				i += 1
+			else:
+				break
 
-	ax[1].set_yticks(custom_yticks)
-	ax[1].set_yticklabels([str(val) for val in custom_yticks])
+
+	else:
+		custom_yticks = [0]
+		i = 1
+		while(True):
+			if (i*10 <= np.max(mutations)):
+				custom_yticks.append(i*10)
+				i += 1
+			else:
+				break
+
+	ax["C"].set_yticks(custom_yticks)
+	ax["C"].set_yticklabels([str(val) for val in custom_yticks])
 
 
 
 	# Workaround to make plot look nice
 	axisRescaleConstant = 0.22*(np.max(mutations) - np.min([val for val in mutations if val > 0]))
-	ax[1].set_ylim([ ax[1].get_ylim()[0]-axisRescaleConstant , ax[1].get_ylim()[1]+axisRescaleConstant ])
+	ax["C"].set_ylim([ ax["C"].get_ylim()[0]-axisRescaleConstant , ax["C"].get_ylim()[1]+axisRescaleConstant ])
+
+
+
+	# Manually plot color bar legend in RHS plot
+	manual_cbar_x = -0.175
+	manual_cbar_y = 0.19
+	manual_cbar_width = 0.1
+	manual_cbar_height = 0.63
+
+	# Plot colorbar outline
+	rect = patches.Rectangle((manual_cbar_x , manual_cbar_y), manual_cbar_width, manual_cbar_height, linewidth = 1 , edgecolor = 'black' , facecolor = 'none' , clip_on = False , transform = ax["C"].transAxes)
+	ax["C"].add_patch(rect)
+
+	# Manually plot color bar interior
+	for i, color in enumerate(newcolors):
+		ax["C"].add_patch(plt.Rectangle((manual_cbar_x, manual_cbar_y + manual_cbar_height/len(newcolors) * i) , manual_cbar_width , manual_cbar_height/len(newcolors) , color = color, linewidth = 0, zorder = 0 , clip_on = False , transform = ax["C"].transAxes))
+
+
+
+	# Add extra box below color bar to indicate color of cells with 0 ecDNA
+	rect = patches.Rectangle((manual_cbar_x , manual_cbar_y-0.02), manual_cbar_width, 0.013, linewidth = 1 , edgecolor = 'black' , facecolor = (10/256,22/256,230/256,0.5) , clip_on = False , transform = ax["C"].transAxes)
+	ax["C"].add_patch(rect)
+
+
+	# Remove middle axes
+	ax["B"].set_axis_off()
 
 
 	# Save plot
-	ax[0].set_aspect(1.0)
-	plt.subplots_adjust(wspace = 0.04)
+	ax["A"].set_aspect(1.0)
+	plt.subplots_adjust(wspace = 0.2)
 	plt.savefig(args.path + ".ecDNA_copyNumber.png" , dpi = 300 , format = 'png')
 
 

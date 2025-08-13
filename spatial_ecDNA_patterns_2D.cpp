@@ -624,6 +624,13 @@ void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , i
 	char* arg_long = nullptr;
 	int verbose = 0;
 
+	*seed = -1;
+	*q = -1;
+	*initial_copyNumber = -1;
+	*selection_coeff = -1000.0;
+	*Nmax = -1;
+
+
 	static struct option long_options[] =
 	{
 		{"verbose", no_argument, &verbose, 1},
@@ -682,6 +689,37 @@ void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , i
 	// Set boolean values for verbose flag
 	if (verbose == 1) *verbose_flag = true;
 
+
+	// Check non-optional arguments were provided
+	if (*seed == -1)
+	{
+		cout << "Argument -x must be provided. Exiting." << endl;
+		exit(0);
+	}
+
+	if (*q == -1)
+	{
+		cout << "Argument -q must be provided. Exiting." << endl;
+		exit(0);
+	}
+
+	if (*initial_copyNumber == -1)
+	{
+		cout << "Argument -k must be provided. Exiting." << endl;
+		exit(0);
+	}
+
+	if (*selection_coeff == -1)
+	{
+		cout << "Argument -s must be provided. Exiting." << endl;
+		exit(0);
+	}
+
+	if (*Nmax == -1)
+	{
+		cout << "Argument -n must be provided. Exiting." << endl;
+		exit(0);
+	}
 
 	// Checks on input parameter values
 	if (*q <= 0)

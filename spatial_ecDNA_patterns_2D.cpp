@@ -629,7 +629,7 @@ void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , i
 		{"verbose", no_argument, &verbose, 1},
 	}; 
 
-	while ((c = getopt_long(argc, argv, "x:q:n:s:N:", long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "x:q:k:s:n:", long_options, &option_index)) != -1)
 	switch (c)
 	{
 		case 0:
@@ -649,7 +649,7 @@ void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , i
 			break;
 
 		// ecDNA copy number in initial cell
-		case 'n':
+		case 'k':
 			*initial_copyNumber = atoi(optarg);
 			break;
 
@@ -659,7 +659,7 @@ void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , i
 			break;
 
 		// Selection coefficient
-		case 'N':
+		case 'n':
 			*Nmax = atoi(optarg);
 			break;
 

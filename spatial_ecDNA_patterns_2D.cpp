@@ -1061,18 +1061,18 @@ int main(int argc, char** argv)
 
 	stringstream f;
 	f.str("");
-	f << "./results/Nmax=" << Nmax << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed;
+	f << "./results/n=" << Nmax << "_k=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed;
 	DIR *dir = opendir(f.str().c_str());
 	if(!dir)
 	{
 		f.str("");
-		f << "mkdir -p ./results/Nmax=" << Nmax << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed;
+		f << "mkdir -p ./results/n=" << Nmax << "_k=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed;
 		system(f.str().c_str());
 	}
 
 	ofstream tissue_file;
 	f.str("");
-	f << "./results/Nmax=" << Nmax << "_n=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed << "/tissue.csv";
+	f << "./results/n=" << Nmax << "_k=" << initial_copyNumber << "_q=" << q << "_s=" << selection_coeff << "/seed=" << seed << "/tissue.csv";
 	tissue_file.open(f.str().c_str());
 
 

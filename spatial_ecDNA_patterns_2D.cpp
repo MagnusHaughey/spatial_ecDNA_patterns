@@ -1122,6 +1122,7 @@ int main(int argc, char** argv)
 
 
 	// Write tissue data to file
+	tissue_file << "x,y,#ecDNA" << endl;
 	for (int i = 0; i < (2*radius); i++)
 	{
 		for (int j = 0; j < (2*radius); j++)

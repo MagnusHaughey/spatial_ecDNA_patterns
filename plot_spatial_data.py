@@ -24,7 +24,7 @@ args = parser.parse_args()
 
 
 # Import raw data
-x , y , mutations = np.loadtxt(args.path , delimiter = "," , unpack = True)
+x , y , mutations = np.loadtxt(args.path , delimiter = "," , unpack = True , skiprows = 1)
 
 
 # matplotlib.pyplot.pcolor() function requires the input data to be square. So first find if x or y is the larger dimension.

@@ -2,22 +2,30 @@
 
 This repository contains the code for simulating the spatial patterns of ecDNA content within expanding tumour cell populations. The program generates an output file tissue.csv containing a list of the (x,y)-coordinates of all cells in the system, and the number of ecDNA copies the carry. Tested using Apple clang version 15.0.0 and Python v3.11.0.
 
-Execute a simulation by running:
+Execute a single simulation by running:
 
 ```
 g++ -o ./spatial_ecDNA_patterns_2D ./spatial_ecDNA_patterns_2D.cpp
-./spatial_ecDNA_patterns_2D [--verbose] [-q Q] [-n N] [-s S] [-x X]
+./spatial_ecDNA_patterns_2D [--verbose] [-n N] [-k K] [-s S] [-q Q] [-x X]
 ```
 
 where\
 &nbsp; --verbose &emsp;&emsp; verbose flag (optional)\
-&nbsp; -N &emsp;&emsp; maximum tumour size (in number of cells)\
+&nbsp; -n &emsp;&emsp; maximum tumour size (in number of cells)\
 &nbsp; -q &emsp;&emsp; cell pushing strength\
-&nbsp; -n &emsp;&emsp; ecDNA copy number in initial cell\
+&nbsp; -k &emsp;&emsp; ecDNA copy number in initial cell\
 &nbsp; -s &emsp;&emsp; selection strength. Scalar multiplier for the ecDNA dependent birth rate function, with s=0 giving rise to neutral growth and s>0 giving rise to positive ecDNA copy number dependent selection\
 &nbsp; -x &emsp;&emsp; random seed
 
-Flags should be specified before numerical arguments. Plot the final spatial data in tissue.csv by running:
+Flags should be specified before numerical arguments.
+
+Run multiple simulations in a batch by editing the variables in the batch_run_parameters.txt file, then running:
+
+```
+bash ./batch_run.sh
+```
+
+Plot the final spatial data in tissue.csv by running:
 
 ```
 python3 ./plot_spatial_data.py [--path PATH] [--plotCopyNumber]

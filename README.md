@@ -39,5 +39,5 @@ To perform parameter fitting (approximate Bayesian computation with rejection sa
 bash ./ABC_full_algorithm.sh
 ```
 
-Uniform prior distributions for parameters s and k are assumed, and the list of q values to simulate must be explicitly specified. These parameters can be edited in the ABC_input_parameters.txt file.
+Uniform prior distributions for parameters s and k are assumed, and the list of q values to simulate must be explicitly specified. Parameters of the prior distributions can be edited in the ABC_input_parameters.txt file.
 

@@ -33,7 +33,7 @@ python3 ./plot_spatial_data.py [--path PATH] [--plotCopyNumber]
 
 where [PATH] is the file path the relevant tissue.csv file, and [--plotCopyNumber] specifies colouring cells according to their ecDNA copy number (if flag not specified, then cells are coloured according to ecDNA+ or ecDNA- status).
 
-To perform parameter fitting (approximate Bayesian computation with rejection sampling) of the SPECIES spatial model to multi-region ecDNA copy number dsitributions (GB-UK cohort, data found in /GB_UK_ecDNA_copy_number_distributions/), run the following command:
+To perform parameter fitting (approximate Bayesian computation with rejection sampling) of the SPECIES spatial model to multi-region ecDNA copy number distributions (GB-UK cohort, data found in /GB_UK_ecDNA_copy_number_distributions/), run the following command:
 
 ```
 bash ./ABC_full_algorithm.sh

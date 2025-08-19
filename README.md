@@ -57,3 +57,5 @@ where the (optional) flags correspond to:
 | --epsilon_margin      | Maximum permissable percentile for margin distance            | 0.25    |
 | --epsilon_leadingEdge | Maximum permissable percentile for leading edge distance            | 0.25    |
 | --posterior_size      | Size of posterior sample set (percentage of total number of particles for given patient | 5    |
+
+This script will process ABC raw data for all patients, summarizing the posterior distributions and estimating best-fit values for parameters s, k and q. Processed data is output in a new directory named /ABC_processed_results/patient_ID/.

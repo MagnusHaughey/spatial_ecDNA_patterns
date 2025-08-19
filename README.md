@@ -56,4 +56,4 @@ where the (optional) flags correspond to:
 | --epsilon_core        | Maximum permissable percentile for core distance            | 0.25    |
 | --epsilon_margin      | Maximum permissable percentile for margin distance            | 0.25    |
 | --epsilon_leadingEdge | Maximum permissable percentile for leading edge distance            | 0.25    |
-| --posterior_size      |             | 0.25    |
+| --posterior_size      | Size of posterior sample set (percentage of total number of particles for given patient | 5    |

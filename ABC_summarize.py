@@ -33,7 +33,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--epsilon_core', help = 'Epsilon for core sample' , required = False , type = float , default = 0.25)
 parser.add_argument('--epsilon_margin', help = 'Epsilon for margin sample' , required = False , type = float , default = 0.25)
 parser.add_argument('--epsilon_leadingEdge', help = 'Epsilon for leading edge sample' , required = False , type = float , default = 0.25)
-parser.add_argument('--posterior_size', help = 'Desired size of posterior sample ()' , required = False , type = float , default = 5)
+parser.add_argument('--posterior_size', help = 'Desired size of posterior sample (percentage)' , required = False , type = float , default = 5)
 args = parser.parse_args()
 
 
@@ -263,7 +263,6 @@ for patient in np.unique(all_patient_IDs):
 
 
 
-	### Bootstrapping errors for estimates on s and n
 	numBootstraps = 1000
 	bootstrapped_s_k_q = []
 
@@ -359,6 +358,7 @@ for patient in np.unique(all_patient_IDs):
 	### Make plot of point estimates
 	###-----------------------------------------------------------------------------
 
+	# Parameters for bar plot
 	s_choices = [round(val , 1) for val in s_choices]
 	s_bar_width = s_choices[1]-s_choices[0]
 	s_posterior_normalised = [list(s).count(val)/float(len(s)) for val in s_choices]
@@ -372,10 +372,10 @@ for patient in np.unique(all_patient_IDs):
 	q_posterior_normalised = [list(q).count(val)/float(len(q)) for val in q_choices]
 
 
+	# Begin plot
 	fig , axes = plt.subplot_mosaic("ABC" , width_ratios = [1,1,1] , figsize = (8 , 4) )
 
-	#print(inferred_params[0],s_CI_lower,s_CI_upper)
-
+	# PLot data
 	axes["A"].scatter(1 , inferred_params[0] , color = "black" , marker = 's' , s = 50 , zorder = 0)
 	axes["A"].errorbar(1 , inferred_params[0], yerr = np.array([[abs(inferred_params[0] - s_CI_lower) , s_CI_upper - inferred_params[0]]]).T , xerr = None , ecolor = "red", linestyle = "dashed" , elinewidth = 2 , capthick = 2 , capsize = 5 , zorder = -10)
 
@@ -387,6 +387,7 @@ for patient in np.unique(all_patient_IDs):
 
 
 
+	# Formatting
 	axes["A"].set_ylim([s_choices[0] - 0.1 , s_choices[-1] + 0.3])
 	axes["B"].set_ylim([k_choices[0] - 5 , k_choices[-1] + 5])
 	axes["C"].set_ylim([0 , len(q_choices) + 1])
@@ -416,6 +417,8 @@ for patient in np.unique(all_patient_IDs):
 	[x.set_linewidth(1.5) for x in axes["C"].spines.values()]
 
 
+
+	# Write to file
 	plt.tight_layout()
 	plt.subplots_adjust(wspace = 0.75)
 	plt.savefig(outDir + "inferred_params.png" , dpi = 600 , format = 'png')
@@ -441,6 +444,7 @@ for patient in np.unique(all_patient_IDs):
 	###-----------------------------------------------------------------------------
 
 
+	# Begin plot
 	plt.clf()
 	fig , axes = plt.subplot_mosaic("ABC;DEF;GHI" , width_ratios = [1,1,1] , figsize = (12 , 12) )
 
@@ -458,7 +462,7 @@ for patient in np.unique(all_patient_IDs):
 
 
 
-	# Draw the 90% credible regions for s and n
+	# Draw the 90% credible regions for s and k
 	# First, take not of the current x and y limits for the bar plot. Plotting the CI will cause these to change, but we can reset these limits after to their current value
 	s_plot_xlim = axes["E"].get_xlim()
 	s_plot_ylim = axes["E"].get_ylim()
@@ -480,7 +484,7 @@ for patient in np.unique(all_patient_IDs):
 	axes["E"].set_ylim(s_plot_ylim)
 
 
-	# Plot 90% credible region for n
+	# Plot 90% credible region for k
 	axes["A"].plot([k_CI_lower , k_CI_lower] , [0 , 1.1] , color = "red" , linestyle = 'dashed')
 	axes["A"].plot([k_CI_upper , k_CI_upper] , [0 , 1.1] , color = "red" , linestyle = 'dashed')
 	axes["A"].axvspan(k_CI_lower, k_CI_upper, alpha = 0.25, color = "#f5b105")
@@ -511,9 +515,6 @@ for patient in np.unique(all_patient_IDs):
 	sns.scatterplot(data = inferred_params_df , x = "k" , y = "s" , marker = "X" , color = "#FFCC29" , linewidth = 1.5 , edgecolor = "black" , s = 250 , ax = axes["D"] , label = "Inferred value")
 	sns.scatterplot(data = inferred_params_df , x = "k" , y = "q" , marker = "X" , color = "#FFCC29" , linewidth = 1.5 , edgecolor = "black" , s = 250 , ax = axes["G"])
 	sns.scatterplot(data = inferred_params_df , x = "s" , y = "q" , marker = "X" , color = "#FFCC29" , linewidth = 1.5 , edgecolor = "black" , s = 250 , ax = axes["H"])
-
-
-
 
 
 
@@ -571,9 +572,6 @@ for patient in np.unique(all_patient_IDs):
 	axes["G"].set_xticks(np.arange(0 , k_choices[-1]+1 , 50))
 	axes["G"].set_xticklabels([str(val) for val in np.arange(0 , k_choices[-1]+1 , 50)])
 
-	# axes["I"].set_xticks([1 , 2 , 3 , 4 , 5 , 6])
-	# axes["I"].set_xticklabels(["1" , "2" , "5" , "10" , "50" , "    1000"])
-
 
 
 	axes["A"].set(ylabel = None)
@@ -587,10 +585,6 @@ for patient in np.unique(all_patient_IDs):
 	fig.delaxes(axes["F"])
 
 
-
-	#for ax in axes:
-	#	[x.set_linewidth(1.5) for x in ax.spines.values()]
-	#	ax.tick_params(width = 1.5)
 
 	for ax in ["A" , "D" , "E" , "G" , "H" , "I"]:
 		[x.set_linewidth(1.5) for x in axes[ax].spines.values()]
@@ -606,6 +600,9 @@ for patient in np.unique(all_patient_IDs):
 
 	plt.subplots_adjust(wspace = 0.05 , hspace = 0.05)
 
+
+
+	# Write to file
 	plt.savefig(outDir + "posteriorDistributions.png" , dpi = 300 , format = 'png')
 	plt.close()
 

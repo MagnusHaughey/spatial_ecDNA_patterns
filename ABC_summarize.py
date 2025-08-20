@@ -33,7 +33,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--epsilon_core', help = 'Epsilon for core sample' , required = False , type = float , default = 0.25)
 parser.add_argument('--epsilon_margin', help = 'Epsilon for margin sample' , required = False , type = float , default = 0.25)
 parser.add_argument('--epsilon_leadingEdge', help = 'Epsilon for leading edge sample' , required = False , type = float , default = 0.25)
-parser.add_argument('--posterior_size', help = 'Desired size of posterior sample (percentage)' , required = False , type = float , default = 5)
+parser.add_argument('--posterior_size', help = 'Desired size of posterior sample (percentage)' , required = False , type = float , default = 0.05)
 args = parser.parse_args()
 
 
@@ -141,7 +141,7 @@ for patient in np.unique(all_patient_IDs):
 	###-----------------------------------------------------------------------------
 
 	# Repeat until size of posterior sample set is around the size set by user
-	posterior_size = round(args.posterior_size*len(s_unfiltered)/100.0)
+	posterior_size = round(args.posterior_size*len(s_unfiltered))
 	attempts = 0
 	while (True):
 
@@ -176,7 +176,7 @@ for patient in np.unique(all_patient_IDs):
 
 
 		# If previously constructed posterior sample set is not close enough to the specificied desired size (args.posterior_size), then alter the epsilon values accordingly and repeat above step
-		if (len(s) > round((args.posterior_size+2)*len(s_unfiltered)/100.0)):
+		if (len(s) > round((args.posterior_size+2)*len(s_unfiltered))):
 			if (args.epsilon_core < 0.001):
 				if (args.epsilon_core < args.epsilon_margin):
 					args.epsilon_margin = np.max([0.0001 , args.epsilon_margin-0.0002])
@@ -185,7 +185,7 @@ for patient in np.unique(all_patient_IDs):
 			else:
 				args.epsilon_core = np.max([0.0001 , args.epsilon_core-0.0002])
 
-		elif (len(s) < round(np.max([0 , (args.posterior_size-2)])*len(s_unfiltered)/100.0)):
+		elif (len(s) < round(np.max([0 , (args.posterior_size-2)])*len(s_unfiltered))):
 			if (args.epsilon_margin > 0.2):
 				if (args.epsilon_margin > args.epsilon_core):
 					args.epsilon_core = np.min([1.0 , args.epsilon_core+0.0015])
@@ -206,10 +206,10 @@ for patient in np.unique(all_patient_IDs):
 			allSamples = [(s, k, q, dist) for s, k, q, dist in zip(s_unfiltered , k_unfiltered , q_unfiltered , combined_distances)]
 			allSamples_sorted = sorted(allSamples, key = lambda tup: tup[3])
 		
-			# Take the closest 1000 particles
-			s = [line[0] for line in allSamples_sorted[:args.posterior_size]]
-			k = [line[1] for line in allSamples_sorted[:args.posterior_size]]
-			q = [line[2] for line in allSamples_sorted[:args.posterior_size]]
+			# Take the closest particles, size of which is determined by input parameter args.posterior_size
+			s = [line[0] for line in allSamples_sorted[:posterior_size]]
+			k = [line[1] for line in allSamples_sorted[:posterior_size]]
+			q = [line[2] for line in allSamples_sorted[:posterior_size]]
 			break
 
 

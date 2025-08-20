@@ -5,13 +5,6 @@ seed=0
 dseed=1
 N=10000
 
-# Parameters for parameter priors
-# k_range_low=1
-# k_range_high=151
-# s_range_low=-0.5
-# s_range_high=5
-# q_values='1 2 5 10 50 1000'
-source ./ABC_input_parameters.txt
 
 
 # Ensure directory for priors exists
@@ -26,7 +19,7 @@ paramFile='./ABC_prior_samples/prior_'"$seed"'.dat'
 PRIOR_GENERATOR_SCRIPT=$PWD'/ABC_generate_prior_samples.py'
 if [ -f $PRIOR_GENERATOR_SCRIPT ]
 then
-	python3 $PRIOR_GENERATOR_SCRIPT --outfile $paramFile --k_range $k_range_low $k_range_high --s_range $s_range_low $s_range_high --q_values $q_values
+	python3 $PRIOR_GENERATOR_SCRIPT --outfile $paramFile
 else
 	>&2 echo "ERROR: ABC_generate_prior_samples.py could not be found."
 fi

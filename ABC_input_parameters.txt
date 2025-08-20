@@ -1,6 +1,12 @@
-# Ranges for parameter priors
+### Ranges for parameter priors
+
+# Lower and upper limits of uniform prior for parameter k
 k_range_low=1
-k_range_high=151
+k_range_high=150
+
+# Lower and upper limits of uniform prior for parameter s
 s_range_low=-0.5
 s_range_high=5
+
+# Explicitly specify all values of q to be simulated
 q_values='1 2 5 10 50 1000'

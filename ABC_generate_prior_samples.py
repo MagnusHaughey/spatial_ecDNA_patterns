@@ -8,8 +8,14 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--outfile' , help = 'Path to output file where prior samples will be written', type = str , required = True)
 parser.add_argument("--k_range" , help = 'Range of prior distribution for k. Enter integer values' , nargs = 2 , type = int , required = True)
 parser.add_argument("--s_range" , help = 'Range of prior distribution for s. Enter value with precision of 0.1 e.g. -0.4, 0.0, 1.1 etc.' , nargs = 2 , type = float , required = True)
-parser.add_argument("--q_values" , help = 'Values of q to choose from. Enter integer values' , nargs = "*" , type = int , required = True)
+parser.add_argument("--q_values" , help = 'Values of q to choose from. Enter integer values' , nargs = 1 , type = str , required = True)
 args = parser.parse_args()
+
+
+
+# Parse q_values from str to int, as inputting int at command line was causing an error
+args.q_values = [int(val) for val in args.q_values[0].split(" ")]
+
 
 
 ### Checks on input parameter values
@@ -34,16 +40,17 @@ number_of_parameter_sets = 1000
 
 ### Ranges for prior distributions (assume uniform priors for all)
 # Initial ecDNA copy number, k
-k_choices = np.arange(args.k_range[0] , args.k_range[1] , 1)
+k_choices = np.arange(args.k_range[0] , args.k_range[1]+1 , 1)
 
 
 # ecDNA selection strength, s
-s_choices = np.arange(round(args.s_range[0] , 1) , round(args.s_range[1] , 1) , 0.1)
+s_choices = np.arange(round(args.s_range[0] , 1) , round(args.s_range[1] , 1)+0.1 , 0.1)
 s_choices = [round(val , 1) for val in s_choices]
 
 
 # Cell pushing strength, q
 q_choices = args.q_values
+
 
 
 

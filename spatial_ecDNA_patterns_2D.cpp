@@ -665,7 +665,7 @@ void parse_command_line_arguments(int argc, char** argv , bool *verbose_flag , i
 			*selection_coeff = atof(optarg);
 			break;
 
-		// Selection coefficient
+		// Total final tumour size
 		case 'n':
 			*Nmax = atoi(optarg);
 			break;
